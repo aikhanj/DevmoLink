@@ -8,6 +8,8 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Cropper, { Area } from 'react-easy-crop';
+import { createImage, getCroppedImg } from './utils/cropUtils';
 
 interface Profile {
   name: string;
@@ -48,6 +50,15 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
   const [avatarPreview, setAvatarPreview] = useState<string>("");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [showCrop, setShowCrop] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  // Add state for photo cropping
+  const [photoCropModal, setPhotoCropModal] = useState<{ file: File, url: string } | null>(null);
+  const [photoCrop, setPhotoCrop] = useState({ x: 0, y: 0 });
+  const [photoZoom, setPhotoZoom] = useState(1);
+  const [photoCroppedAreaPixels, setPhotoCroppedAreaPixels] = useState<Area | null>(null);
 
   useEffect(() => {
     if (!email) return;
@@ -61,6 +72,20 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
       setLoadingProfile(false);
     });
   }, [email]);
+
+  useEffect(() => {
+    if (profile.photos && profile.photos.length > 0) {
+      setPhotoPreviews(profile.photos);
+      setPhotoFiles([]); // Optionally clear local files if you want only remote images
+    }
+  }, [profile.photos]);
+
+  useEffect(() => {
+    if (profile.avatarUrl) {
+      setAvatarPreview(profile.avatarUrl);
+      setAvatarFile(null); // Optionally clear local file if you want only remote image
+    }
+  }, [profile.avatarUrl]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -90,14 +115,55 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
     if (file) {
       setAvatarFile(file);
       setAvatarPreview(URL.createObjectURL(file));
+      setShowCrop(true);
     }
+  };
+
+  const onCropComplete = (croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const handleCropConfirm = async () => {
+    if (!avatarPreview || !croppedAreaPixels) return;
+    const croppedImg = await getCroppedImg(avatarPreview, croppedAreaPixels, 1);
+    setAvatarPreview(croppedImg);
+    // Convert dataURL to File for upload
+    const res = await fetch(croppedImg);
+    const blob = await res.blob();
+    const avatarFileObj = new File([blob], 'avatar.jpg', { type: blob.type });
+    setAvatarFile(avatarFileObj);
+    setShowCrop(false);
   };
 
   const handlePhotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + photoPreviews.length > 9) return;
-    setPhotoFiles((prev) => [...prev, ...files]);
-    setPhotoPreviews((prev) => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+    if (files.length > 0) {
+      const file = files[0];
+      const url = URL.createObjectURL(file);
+      setPhotoCropModal({ file, url });
+    }
+  };
+
+  const onPhotoCropComplete = (croppedArea: Area, croppedAreaPixels: Area) => {
+    setPhotoCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const handlePhotoCropConfirm = async () => {
+    if (!photoCropModal || !photoCroppedAreaPixels) return;
+    const croppedImg = await getCroppedImg(photoCropModal.url, photoCroppedAreaPixels, 3/4);
+    const res = await fetch(croppedImg);
+    const blob = await res.blob();
+    const croppedFile = new File([blob], photoCropModal.file.name, { type: blob.type });
+    setPhotoFiles((prev) => [...prev, croppedFile]);
+    setPhotoPreviews((prev) => [...prev, croppedImg]);
+    setPhotoCropModal(null);
+    setPhotoCroppedAreaPixels(null);
+  };
+
+  const handlePhotoCropCancel = () => {
+    setPhotoCropModal(null);
+    setPhotoCroppedAreaPixels(null);
   };
 
   const handleRemovePhoto = (idx: number) => {
@@ -110,25 +176,42 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
     if (!email) return;
     if (photoPreviews.length < 2) return;
     setSaving(true);
-    let uploadedUrls = [...(profile.photos || [])];
-    // Upload new files
-    for (let i = 0; i < photoFiles.length; ++i) {
-      const file = photoFiles[i];
-      // Only upload files that are not already URLs
-      if (typeof file === "string") continue;
-      const storageRef = ref(storage, `photos/${email}_${Date.now()}_${i}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      uploadedUrls.push(url);
+
+    let avatarUrl = profile.avatarUrl || "";
+    if (avatarFile) {
+      const avatarStorageRef = ref(storage, `avatars/${email}_${Date.now()}`);
+      await uploadBytes(avatarStorageRef, avatarFile);
+      avatarUrl = await getDownloadURL(avatarStorageRef);
+    } else if (profile.avatarUrl) {
+      avatarUrl = profile.avatarUrl;
+    } else {
+      avatarUrl = "";
     }
-    // Only keep up to 9
-    uploadedUrls = uploadedUrls.slice(0, 9);
-    // Use first photo as avatar
-    const avatarUrl = uploadedUrls[0] || "";
+
+    let uploadedPhotoUrls: string[] = [];
+
+    if (photoFiles.length === 0 && profile.photos) {
+      // No new photos, keep existing ones
+      uploadedPhotoUrls = profile.photos;
+    } else {
+      // Upload new files
+      for (let i = 0; i < photoFiles.length; ++i) {
+        const file = photoFiles[i];
+        // Only upload files that are not already URLs
+        if (typeof file === "string") continue;
+        const photoStorageRef = ref(storage, `photos/${email}_${Date.now()}_${i}`);
+        await uploadBytes(photoStorageRef, file);
+        const url = await getDownloadURL(photoStorageRef);
+        uploadedPhotoUrls.push(url);
+      }
+      // Only keep up to 9
+      uploadedPhotoUrls = uploadedPhotoUrls.slice(0, 9);
+    }
+
     await setDoc(doc(db, "profiles", email), {
       ...profile,
       avatarUrl,
-      photos: uploadedUrls,
+      photos: uploadedPhotoUrls,
       email,
     });
     setSaving(false);
@@ -161,7 +244,7 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 modern-scrollbar">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 modern-scrollbar gradient-scrollbar">
       <form
         onSubmit={handleSubmit}
         className="bg-[#23272a] rounded-2xl p-8 w-[95vw] max-w-md shadow-2xl flex flex-col gap-4 relative overflow-y-auto max-h-[90vh]"
@@ -175,16 +258,18 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
         >
           ×
         </button>
-        <h2 className="text-2xl font-bold text-white mb-2">My Profile</h2>
+        <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-[#00FFAB] to-[#009E6F] bg-clip-text text-transparent">My Profile</h2>
         <div className="flex flex-col items-center gap-2 mb-2">
           <label htmlFor="avatar-upload" className="cursor-pointer">
-            {avatarPreview ? (
-              <img src={avatarPreview} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-indigo-500 shadow-lg" />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-indigo-900 flex items-center justify-center text-4xl text-indigo-300 border-4 border-indigo-500 shadow-lg">
-                <span>+</span>
-              </div>
-            )}
+            <div className="p-1 rounded-full bg-gradient-to-r from-[#00FFAB] to-[#009E6F]">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Avatar" className="w-24 h-24 rounded-full object-cover bg-[#18181b]" />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-[#18181b] flex items-center justify-center text-4xl text-[#00FFAB]">
+                  <span>+</span>
+                </div>
+              )}
+            </div>
             <input
               id="avatar-upload"
               type="file"
@@ -193,21 +278,24 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
               onChange={handleAvatarChange}
             />
           </label>
-          <span className="text-indigo-200 text-xs">Click to upload avatar</span>
+          <span className="text-[#00FFAB] text-xs">Click to upload avatar</span>
         </div>
         <div className="flex flex-col items-center gap-2 mb-2">
           <label htmlFor="photos-upload" className="cursor-pointer">
             <div className="flex flex-wrap gap-2 justify-center">
               {photoPreviews.map((src, idx) => (
                 <div key={idx} className="relative group">
-                  <img src={src} alt={`Photo ${idx + 1}`} className={`w-20 h-20 rounded-lg object-cover border-2 ${idx === 0 ? 'border-indigo-500' : 'border-gray-700'} shadow-lg`} />
+                  <div className="p-1 rounded-lg bg-gradient-to-r from-[#00FFAB] to-[#009E6F] aspect-[3/4] w-24 h-32">
+                    <img src={src} alt={`Photo ${idx + 1}`} className="w-full h-full rounded-lg object-cover bg-[#18181b]" />
+                  </div>
                   <button type="button" onClick={() => handleRemovePhoto(idx)} className="absolute top-0 right-0 bg-black/60 text-white rounded-full px-1 py-0.5 text-xs opacity-0 group-hover:opacity-100 transition">×</button>
-                  {idx === 0 && <span className="absolute bottom-0 left-0 bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-tr-lg rounded-bl-lg">Avatar</span>}
                 </div>
               ))}
               {photoPreviews.length < 9 && (
-                <div className="w-20 h-20 rounded-lg bg-indigo-900 flex items-center justify-center text-3xl text-indigo-300 border-2 border-dashed border-indigo-500 shadow-lg">
-                  +
+                <div className="p-1 rounded-lg bg-gradient-to-r from-[#00FFAB] to-[#009E6F] aspect-[3/4] w-24 h-32">
+                  <div className="w-full h-full rounded-lg bg-[#18181b] flex items-center justify-center text-3xl text-[#00FFAB] border-2 border-dashed border-transparent">
+                    +
+                  </div>
                 </div>
               )}
             </div>
@@ -220,36 +308,36 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
               onChange={handlePhotosChange}
             />
           </label>
-          <span className="text-indigo-200 text-xs">Upload 2-9 photos. First photo is your avatar.</span>
+          <span className="text-[#00FFAB] text-xs">Upload 2-9 photos.</span>
         </div>
-        <label className="text-indigo-200 text-sm">
+        <label className="text-[#00FFAB] text-sm">
           Name
           <input
             name="name"
             value={profile.name}
             onChange={handleChange}
-            className="w-full mt-1 p-2 rounded bg-[#2c2f36] text-white"
+            className="w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border border-[#00FFAB] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FFAB]"
             required
           />
         </label>
-        <label className="text-indigo-200 text-sm">
+        <label className="text-[#00FFAB] text-sm">
           Birthday
           <input
             type="date"
             name="birthday"
             value={profile.birthday}
             onChange={handleChange}
-            className="w-full mt-1 p-2 rounded bg-[#2c2f36] text-white"
+            className="w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border border-[#00FFAB] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FFAB]"
             required
           />
         </label>
-        <label className="text-indigo-200 text-sm">
+        <label className="text-[#00FFAB] text-sm">
           Gender
           <select
             name="gender"
             value={profile.gender}
             onChange={handleChange}
-            className="w-full mt-1 p-2 rounded bg-[#2c2f36] text-white"
+            className="w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border border-[#00FFAB] focus:outline-none focus:ring-2 focus:ring-[#00FFAB]"
             required
           >
             <option value="">Select gender</option>
@@ -258,7 +346,7 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
             ))}
           </select>
         </label>
-        <label className="text-indigo-200 text-sm">
+        <label className="text-[#00FFAB] text-sm">
           Programming Languages/Frameworks (press Enter or comma to add)
           <div className="flex flex-wrap gap-2 mt-1 mb-1">
             {profile.programmingLanguages.map((lang: string) => (
@@ -273,17 +361,17 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
             value={langInput}
             onChange={e => setLangInput(e.target.value)}
             onKeyDown={handleLangKeyDown}
-            className="w-full p-2 rounded bg-[#2c2f36] text-white"
+            className="w-full p-2 rounded-lg bg-[#18181b] text-white border border-[#00FFAB] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FFAB]"
             placeholder="Type and press Enter or comma..."
           />
         </label>
-        <label className="text-indigo-200 text-sm">
+        <label className="text-[#00FFAB] text-sm">
           Timezone
           <select
             name="timezone"
             value={profile.timezone}
             onChange={handleChange}
-            className="w-full mt-1 p-2 rounded bg-[#2c2f36] text-white modern-scrollbar"
+            className="w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border border-[#00FFAB] focus:outline-none focus:ring-2 focus:ring-[#00FFAB]"
             required
           >
             <option value="">Select timezone</option>
@@ -294,7 +382,7 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
         </label>
         <button
           type="submit"
-          className="mt-2 px-5 py-2 bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white rounded-full font-semibold shadow-lg hover:scale-105 transition-transform"
+          className="w-full py-3 rounded-lg bg-[#00FFAB] text-[#030712] font-bold text-lg mt-4 shadow hover:bg-[#00e69c] transition"
           disabled={saving || loadingProfile || photoPreviews.length < 2}
         >
           {saving ? "Saving..." : "Save"}
@@ -304,6 +392,48 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
       {loadingProfile && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
           <div className="text-indigo-200 text-lg animate-pulse">Loading profile…</div>
+        </div>
+      )}
+      {showCrop && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-[#23272a] p-6 rounded-xl">
+            <div className="relative w-72 h-72">
+              <Cropper
+                image={avatarPreview}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+            <div className="flex gap-4 mt-4 justify-center">
+              <button type="button" className="px-4 py-2 bg-gray-700 text-white rounded" onClick={() => setShowCrop(false)}>Cancel</button>
+              <button type="button" className="px-4 py-2 bg-[#00FFAB] text-[#030712] rounded font-bold" onClick={handleCropConfirm}>Crop</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {photoCropModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-[#18181b] p-6 rounded-xl">
+            <div className="relative w-48 h-64"> {/* 3:4 aspect */}
+              <Cropper
+                image={photoCropModal.url}
+                crop={photoCrop}
+                zoom={photoZoom}
+                aspect={3/4}
+                onCropChange={setPhotoCrop}
+                onZoomChange={setPhotoZoom}
+                onCropComplete={onPhotoCropComplete}
+              />
+            </div>
+            <div className="flex gap-4 mt-4 justify-center">
+              <button type="button" className="px-4 py-2 bg-gray-700 text-white rounded" onClick={handlePhotoCropCancel}>Cancel</button>
+              <button type="button" className="px-4 py-2 bg-[#00FFAB] text-[#030712] rounded font-bold" onClick={handlePhotoCropConfirm}>Crop</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

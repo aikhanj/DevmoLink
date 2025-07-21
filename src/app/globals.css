@@ -1,33 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 
 html, body {
   height: 100%;
   overflow: hidden;
+  font-family: 'JetBrains Mono', monospace;
+  background: #030712;
+  color: #e0e0e0;
+}
+
+* {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.01em;
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #030712;
+  --foreground: #e0e0e0;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'JetBrains Mono', monospace;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #030712;
+    --foreground: #e0e0e0;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 /* Modern scrollbar styles */
@@ -47,4 +60,63 @@ body {
 }
 .modern-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #818cf8;
+}
+
+.active-tab {
+  background: rgba(0, 255, 171, 0.08);
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px 0 rgba(0, 255, 171, 0.08);
+}
+
+/* Grey shimmer bars loading animation */
+.shimmer {
+  background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Remove old loader animation */
+.loader {
+  display: none;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(32px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.8s cubic-bezier(0.4,0,0.2,1) both;
+}
+
+@keyframes shine {
+  0% { left: -75%; }
+  100% { left: 125%; }
+}
+.group-hover\:animate-shine:hover {
+  animation: shine 1s linear;
+}
+
+.gradient-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #00FFAB #18181b; /* For Firefox */
+}
+.gradient-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  border-radius: 8px;
+}
+.gradient-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #00FFAB, #009E6F);
+  border-radius: 8px;
+}
+.gradient-scrollbar::-webkit-scrollbar-track {
+  background: #18181b;
 }

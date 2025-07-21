@@ -1,9 +1,13 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, createContext, useContext } from "react";
 import { Settings, Flame, Heart, MessageCircle, User, Compass } from "lucide-react";
 import Link from "next/link";
 import { Dialog } from "@headlessui/react";
 import { signOut, useSession, signIn } from "next-auth/react";
+import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
+import { db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 const navItems = [
   { href: "/", label: "Home", icon: Flame },
@@ -13,83 +17,191 @@ const navItems = [
   { href: "/explore", label: "Explore", icon: Compass },
 ];
 
+// Global loading context
+export const LoadingContext = createContext<{ loading: boolean; setLoading: (v: boolean) => void }>({ loading: false, setLoading: () => {} });
+
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { data: session } = useSession();
+  const pathname = usePathname();
+  const { theme = 'light', setTheme } = useTheme();
+  const [notifications, setNotifications] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState<{ avatarUrl?: string } | null>(null);
+
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      if (session?.user?.email) {
+        const snap = await getDoc(doc(db, "profiles", session.user.email));
+        if (snap.exists()) {
+          setProfile(snap.data());
+        } else {
+          setProfile(null);
+        }
+      }
+    };
+    fetchProfile();
+  }, [session]);
+
+  // console.log('settingsOpen:', settingsOpen);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#0f172a] via-[#2e2fee] to-[#8b5cf6] dark">
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3">
-        <span className="font-bold text-xl bg-gradient-to-r from-[#8b5cf6] to-[#2e2fee] bg-clip-text text-transparent select-none">
-          HackMatch
-        </span>
-        <button
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-black/30 hover:bg-black/50 transition duration-200"
-          onClick={() => setSettingsOpen(true)}
-          aria-label="Open settings"
+    <LoadingContext.Provider value={{ loading, setLoading }}>
+      <div className="min-h-screen grid grid-rows-[auto_1fr] bg-[#030712] dark">
+        {/* Global Loading Spinner Overlay with fade */}
+        <div className={`fixed inset-0 z-[100] flex items-center justify-center pointer-events-none transition-opacity duration-300 ${loading ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="w-full max-w-md mx-auto space-y-4 px-4">
+            <div className="shimmer h-8 rounded-lg mb-4"></div>
+            <div className="shimmer h-32 rounded-xl mb-4"></div>
+            <div className="shimmer h-32 rounded-xl mb-4"></div>
+            <div className="shimmer h-32 rounded-xl"></div>
+          </div>
+        </div>
+        <header className="flex items-center justify-between px-4 py-3 h-14">
+          <span className="font-bold text-xl text-[#00FFAB] select-none">
+            HackMatch
+          </span>
+          <button
+            className={`z-[60] flex items-center px-2 py-1 transition duration-200 hover:scale-105 ${settingsOpen ? 'text-[#00FFAB] font-bold active-tab' : ''}`}
+            onClick={() => setSettingsOpen(v => !v)}
+            aria-label="Open settings"
+          >
+            <Settings className={`w-6 h-6 ${settingsOpen ? 'text-[#00FFAB] drop-shadow-[0_0_8px_#00FFAB]' : 'text-gray-200'}`} />
+          </button>
+        </header>
+        {/* Main content with fade, flex-1 for vertical centering */}
+        <main className={`h-full flex flex-col items-center justify-center w-full px-2 pb-20 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          <div className="w-full max-w-md mx-auto">
+            {children}
+          </div>
+        </main>
+
+        {/* Footer nav */}
+        {session && (
+          <footer
+            className="fixed bottom-0 left-0 right-0 z-40 h-16 w-full flex items-center justify-around bg-[#0f0f14]/95 backdrop-blur-md border-t border-white/10 shadow-[0_-1px_3px_rgba(0,0,0,0.45)] rounded-none md:hidden pb-[calc(env(safe-area-inset-bottom)+0.5rem)]"
+          >
+            {navItems.map(({ href, label, icon: Icon }) => {
+              const isActive = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className="w-12 h-12 flex flex-col items-center justify-center text-gray-300 active:scale-90 transition flex-1"
+                  style={{ position: 'relative' }}
+                >
+                  <Icon className={`w-6 h-6 mb-1 ${isActive ? 'text-emerald-400' : 'text-gray-300'}`} />
+                  <span className={`text-xs font-mono ${isActive ? 'text-emerald-400 font-bold' : ''}`}>{label}</span>
+                  {isActive && <span className="block h-0.5 w-6 bg-emerald-400 mt-1 rounded-sm" />}
+                </Link>
+              );
+            })}
+          </footer>
+        )}
+
+        {/* Settings Slide-Over (no Dialog, always rendered for animation) */}
+        {/* Overlay */}
+        <div
+          className={`fixed inset-0 z-50 ${settingsOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          aria-hidden="true"
+          onClick={() => setSettingsOpen(false)}
         >
-          <Settings className="text-gray-200" />
-        </button>
-      </header>
-
-      {/* Main content */}
-      <main className="flex-1 w-full max-w-md mx-auto px-2 pb-20">{children}</main>
-
-      {/* Footer nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-20 w-full max-w-md mx-auto px-2 pb-2">
-        <div className="flex justify-between items-center rounded-2xl backdrop-blur-md bg-black/60 text-gray-200 shadow-lg shadow-black/20 px-2 py-1">
-          {navItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex flex-col items-center flex-1 py-2 transition duration-200 hover:scale-105"
+          {/* Overlay */}
+          <div
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${settingsOpen ? 'opacity-100' : 'opacity-0'}`}
+          />
+          {/* Sliding panel */}
+          <div className="absolute inset-y-0 right-0 max-w-full flex" onClick={e => e.stopPropagation()}>
+            <div
+              className={`w-80 h-full transform transition-transform duration-300 ease-in-out bg-[#18181b] p-6 shadow-xl flex flex-col focus:outline-none
+                ${settingsOpen ? "translate-x-0" : "translate-x-full"}
+              `}
+              tabIndex={-1}
+              aria-modal="true"
             >
-              <Icon className="w-6 h-6 mb-1" />
-              <span className="text-xs">{label}</span>
-            </Link>
-          ))}
-        </div>
-      </nav>
-
-      {/* Settings Slide-Over */}
-      <Dialog open={settingsOpen} onClose={setSettingsOpen} className="relative z-50">
-        <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
-        <div className="fixed inset-y-0 right-0 max-w-full flex">
-          <Dialog.Panel className="w-80 bg-[#18181b] p-6 shadow-xl h-full flex flex-col">
-            <Dialog.Title className="font-bold text-lg mb-4 text-gray-100">Settings</Dialog.Title>
-            {session ? (
-              <button
-                className="mb-4 px-4 py-2 rounded-lg bg-[#8b5cf6] text-white font-semibold hover:bg-[#7c3aed] transition"
-                onClick={() => signOut()}
+              <div className="font-bold text-lg mb-4 text-gray-100">Settings</div>
+              {/* Account Info */}
+              {session && (
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-0.5 rounded-full bg-gradient-to-r from-[#00FFAB] to-[#009E6F]">
+                    {profile?.avatarUrl ? (
+                      <img src={profile.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full object-cover bg-[#18181b]" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-[#18181b] flex items-center justify-center text-white text-lg">
+                        <User className="w-6 h-6" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold">{session.user?.name || session.user?.email}</div>
+                    <div className="text-[#00FFAB] text-xs">{session.user?.email}</div>
+                  </div>
+                </div>
+              )}
+              {/* Theme Toggle */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-white">Theme</span>
+                <button
+                  className="px-3 py-1 rounded-lg bg-[#00FFAB] text-[#030712] font-semibold hover:bg-[#009E6F] transition"
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                >
+                  {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
+                </button>
+              </div>
+              {/* Notifications Toggle */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-white">Notifications</span>
+                <button
+                  className={`px-3 py-1 rounded-lg font-semibold transition ${notifications ? 'bg-[#00FFAB] text-[#030712]' : 'bg-gray-700 text-gray-300'}`}
+                  onClick={() => setNotifications(n => !n)}
+                >
+                  {notifications ? 'On' : 'Off'}
+                </button>
+              </div>
+              {/* Edit Profile */}
+              {session && (
+                <button
+                  className="mb-4 px-4 py-2 rounded-lg bg-[#00FFAB] text-[#030712] font-semibold hover:bg-[#009E6F] transition"
+                  onClick={() => { setSettingsOpen(false); window.location.href = '/profile'; }}
+                >
+                  Edit Profile
+                </button>
+              )}
+              {/* About Link */}
+              <a
+                href="#"
+                className="text-[#00FFAB] underline hover:text-[#009E6F] mb-4"
+                onClick={() => alert('HackMatch helps you find your perfect hackathon team!')}
               >
-                Logout
-              </button>
-            ) : (
+                About HackMatch
+              </a>
+              {/* Sign In/Out */}
+              {session ? (
+                <button
+                  className="mb-4 px-4 py-2 rounded-lg bg-[#00FFAB] text-[#030712] font-semibold hover:bg-[#009E6F] transition"
+                  onClick={() => signOut()}
+                >
+                  Logout
+                </button>
+              ) : (
+                <button
+                  className="mb-4 px-4 py-2 rounded-lg bg-[#00FFAB] text-[#030712] font-semibold hover:bg-[#009E6F] transition"
+                  onClick={() => signIn("google")}
+                >
+                  Sign in
+                </button>
+              )}
               <button
-                className="mb-4 px-4 py-2 rounded-lg bg-[#8b5cf6] text-white font-semibold hover:bg-[#7c3aed] transition"
-                onClick={() => signIn("google")}
+                className="mt-auto self-end text-gray-400 hover:text-gray-200"
+                onClick={() => setSettingsOpen(false)}
+                aria-label="Close settings"
               >
-                Sign in
+                Close
               </button>
-            )}
-            <a
-              href="#"
-              className="text-[#8b5cf6] underline hover:text-[#a259f7]"
-              onClick={() => alert('Feedback link stub')}
-            >
-              Feedback
-            </a>
-            <button
-              className="mt-auto self-end text-gray-400 hover:text-gray-200"
-              onClick={() => setSettingsOpen(false)}
-              aria-label="Close settings"
-            >
-              Close
-            </button>
-          </Dialog.Panel>
+            </div>
+          </div>
         </div>
-      </Dialog>
-    </div>
+      </div>
+    </LoadingContext.Provider>
   );
 } 
