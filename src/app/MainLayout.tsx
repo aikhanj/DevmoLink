@@ -70,7 +70,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </button>
         </header>
         {/* Main content with fade, flex-1 for vertical centering */}
-        <main className={`h-full flex flex-col items-center justify-center w-full px-2 pb-20 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <main className={`h-full flex flex-col items-center w-full px-2 pb-20 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'} justify-start md:justify-center pt-4`}>
           <div className="w-full max-w-md mx-auto">
             {children}
           </div>
