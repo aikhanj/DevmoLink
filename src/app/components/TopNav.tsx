@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Flame, Heart, MessageCircle, User, Compass } from 'lucide-react';
+import { Flame, Heart, MessageCircle, User, Compass, Settings } from 'lucide-react';
+import { useState } from 'react';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Flame },
@@ -10,12 +11,18 @@ const navItems = [
   { href: '/explore', label: 'Explore', icon: Compass },
 ];
 
-export default function TopNav() {
+interface TopNavProps {
+  onSettingsClick?: () => void;
+  settingsOpen?: boolean;
+}
+
+export default function TopNav({ onSettingsClick, settingsOpen = false }: TopNavProps = {}) {
   const pathname = usePathname();
+  
   return (
-    <nav className="hidden md:flex fixed top-0 left-0 w-full z-40 bg-black/60 backdrop-blur-lg shadow-inner h-16 items-center px-8 gap-8">
+    <nav className="hidden md:flex fixed top-0 left-0 w-full z-40 bg-black/60 backdrop-blur-lg shadow-inner h-16 items-center justify-between px-8">
       <span className="font-mono text-2xl font-bold text-[#00FFAB] select-none tracking-tight">HackMatch</span>
-      <div className="flex gap-6 ml-8">
+      <div className="flex gap-6 items-center">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href;
           return (
@@ -33,6 +40,15 @@ export default function TopNav() {
             </Link>
           );
         })}
+        {onSettingsClick && (
+          <button
+            className={`z-[60] flex items-center px-2 py-1 ml-4 transition duration-200 hover:scale-105 ${settingsOpen ? 'text-[#00FFAB] font-bold active-tab' : ''}`}
+            onClick={onSettingsClick}
+            aria-label="Open settings"
+          >
+            <Settings className={`w-6 h-6 ${settingsOpen ? 'text-[#00FFAB] drop-shadow-[0_0_8px_#00FFAB]' : 'text-gray-200'}`} />
+          </button>
+        )}
       </div>
     </nav>
   );
