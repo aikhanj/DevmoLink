@@ -49,7 +49,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <LoadingContext.Provider value={{ loading, setLoading }}>
-      <div className="min-h-screen  bg-[#030712] dark">
+      <div className="min-h-screen bg-[#030712] dark">
         {/* Global Loading Spinner Overlay with fade */}
         <div className={`fixed inset-0 z-[100] flex items-center justify-center pointer-events-none transition-opacity duration-300 ${loading ? 'opacity-100' : 'opacity-0'}`}>
           <div className="w-full max-w-md mx-auto space-y-4 px-4">
