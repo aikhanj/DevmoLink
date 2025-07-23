@@ -73,55 +73,44 @@ export default function ChatsPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">
-      <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">Chats</h2>
-      <div className="w-full max-w-md mx-auto space-y-8">
-        {/* Reset button for mock/testing mode */}
-        {isTestingMode && chats.length > 0 && (
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  localStorage.removeItem("likedEmails");
-                }
-                // Attempt to clear swipes & matches in backend (ignores errors in mock mode)
-                fetch("/api/chats/reset", { method: "POST" }).catch(() => {});
-                setChats([]);
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-sm"
-            >
-              Reset Chats
-            </button>
-          </div>
-        )}
-        {chats.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="text-5xl mb-4">🎉</div>
-            <div className="text-lg text-white mb-2 font-mono">You&apos;re all caught up!</div>
-            <div className="text-[#00FFAB] mb-4 font-mono">We&apos;ll ping you when new hackers join.</div>
-            <button className="px-4 py-2 bg-[#00FFAB] text-[#030712] rounded-full opacity-50 cursor-not-allowed font-mono" disabled>
-              Refresh
-            </button>
-          </div>
-        ) : (
-          chats.map((chat) => (
-            <button
+    <div id="chatsInbox" className="h-full w-full flex flex-col items-center py-8 min-h-0">
+      <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent mb-8">
+        Chats
+      </h1>
+
+      {/* Testing button to clear localStorage */}
+      <button
+        onClick={() => {
+          localStorage.removeItem('likedEmails');
+          setChats([]);
+        }}
+        className="mb-4 px-3 py-1 bg-blue-500 text-white rounded-md text-sm"
+      >
+        Reset Chats
+      </button>
+
+      {chats.length === 0 ? (
+        <p className="text-white/60">No chats yet. Start swiping to find a match!</p>
+      ) : (
+        <div className="flex-1 !overflow-y-auto w-full max-w-md mx-auto space-y-3 px-2 min-h-0 gradient-scrollbar">
+          {chats.map((chat) => (
+            <div
               key={chat.id}
               onClick={() => router.push(`/chats/${encodeURIComponent(chat.id)}`)}
               className="w-full flex items-center gap-4 bg-[#18181b] rounded-xl shadow-lg shadow-black/20 p-4 transition-all duration-150 hover:scale-[1.02] hover:shadow-xl"
             >
-              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
-                {(chat.name ?? chat.email ?? chat.id)[0]}
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 flex-shrink-0 flex items-center justify-center">
+                <span className="text-white font-bold text-lg">{(chat.name ?? chat.email ?? chat.id)[0]}</span>
               </div>
-              <div className="flex-1 text-left">
-                <div className="font-semibold text-white text-[1.125rem] font-mono">{chat.name ?? chat.email ?? chat.id}</div>
-                <div className="text-[#00FFAB] text-sm truncate font-mono">Say hi and start collaborating!</div>
-              </div>
-              <MessageCircle className="text-[#00FFAB] transition-all duration-150 ease-out" />
-            </button>
-          ))
-        )}
-      </div>
+              <div className="flex-1 min-w-0 text-left">
+                 <div className="font-semibold text-white text-base leading-snug font-mono truncate">{chat.name ?? chat.email ?? chat.id}</div>
+                 <div className="text-[#00FFAB] text-xs truncate font-mono">Say hi and start collaborating!</div>
+               </div>
+               <MessageCircle className="text-[#00FFAB] transition-all duration-150 ease-out" />
+             </div>
+           ))}
+         </div>
+      )}
     </div>
   );
 } 
