@@ -7,6 +7,7 @@ const AnyTinderCard = TinderCard as any;
 import AuthButton from "./AuthButton";
 import dynamic from 'next/dynamic';
 import { XMarkIcon, HeartIcon } from '@heroicons/react/24/solid';
+import { useRouter } from "next/navigation";
 const ProfileCard = dynamic(() => import('./components/ProfileCard'), { ssr: false });
 import { useSession, signIn } from "next-auth/react";
 import { LoadingContext } from "./MainLayout";
@@ -47,6 +48,7 @@ function useTypingEffect(text: string, speed = 30) {
 
 export default function Home() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [swipedIds, setSwipedIds] = useState<string[]>([]);
   const [loading, setLocalLoading] = useState(true);
@@ -914,16 +916,37 @@ export default function Home() {
     (dir: "left" | "right" | "up" | "down") => {
       if (!showProfile) return;
       if (dir === "left" || dir === "right") {
-        // Record swipe in backend
-        fetch("/api/swipes", {
-          method: "POST",
-          body: JSON.stringify({ to: showProfile.email, direction: dir }),
-          headers: { "Content-Type": "application/json" },
-        });
+        // Record swipe in backend and determine if it's a match
+        (async () => {
+          try {
+            await fetch("/api/swipes", {
+              method: "POST",
+              body: JSON.stringify({ to: showProfile.email, direction: dir }),
+              headers: { "Content-Type": "application/json" },
+            });
+            // In mock mode we assume everyone already liked the user, so treat any right swipe as a match.
+            if (dir === "right") {
+              // Store to localStorage for Chats list fallback
+              if (typeof window !== 'undefined') {
+                try {
+                  const existing = JSON.parse(localStorage.getItem('likedEmails') || '[]');
+                  if (!existing.includes(showProfile.email)) {
+                    existing.push(showProfile.email);
+                    localStorage.setItem('likedEmails', JSON.stringify(existing));
+                  }
+                } catch {}
+              }
+              alert(`Matched with ${showProfile.name}`);
+              router.push(`/chats/${encodeURIComponent(showProfile.email)}`);
+            }
+          } catch (error) {
+            console.error("Error recording swipe:", error);
+          }
+        })();
         setSwipedIds((prev) => [...prev, showProfile.email]);
       }
     },
-    [showProfile]
+    [showProfile, router]
   );
 
   const mainHeadline1 = "Welcome to";

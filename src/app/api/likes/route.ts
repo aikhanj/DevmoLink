@@ -20,6 +20,9 @@ export async function GET() {
     const profileSnap = await getDoc(doc(db, "profiles", email));
     if (profileSnap.exists()) {
       profiles.push({ id: email, ...profileSnap.data() });
+    } else {
+      // Fallback when profile doc does not exist (mock data or user not onboarded)
+      profiles.push({ id: email, email });
     }
   }
 
