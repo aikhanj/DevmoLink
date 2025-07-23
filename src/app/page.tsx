@@ -921,7 +921,6 @@ export default function Home() {
           headers: { "Content-Type": "application/json" },
         });
         setSwipedIds((prev) => [...prev, showProfile.email]);
-        setCurrent((prev) => prev + 1);
       }
     },
     [showProfile]
@@ -997,12 +996,15 @@ export default function Home() {
               </button>
               {/* Reset Button for Mock Data (isEmpty state) */}
               {isTestingMode && (
-                <button
-                  onClick={() => setSwipedIds([])}
-                  className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-base"
-                >
-                  Reset Profiles
-                </button>
+                              <button
+                onClick={() => {
+                  setSwipedIds([]);
+                  setCurrent(0);
+                }}
+                className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-base"
+              >
+                Reset Profiles
+              </button>
               )}
             </div>
           </div>
@@ -1078,7 +1080,10 @@ export default function Home() {
           {isTestingMode && (
             <div className="fixed left-1/2 -translate-x-1/2 z-30" style={{ bottom: 20 }}>
               <button
-                onClick={() => setSwipedIds([])}
+                onClick={() => {
+                  setSwipedIds([]);
+                  setCurrent(0);
+                }}
                 className="px-4 py-2 bg-blue-500 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-base"
               >
                 Reset Profiles
