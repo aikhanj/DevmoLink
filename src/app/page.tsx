@@ -986,10 +986,10 @@ export default function Home() {
             Find your perfect hackathon team, connect with like-minded builders, and join exciting projects. Sign up to start matching and chatting with other hackers!
           </p>
           <button
-            onClick={() => signIn("google")}
+            onClick={() => router.push('/create-account')}
             className="relative px-8 py-4 bg-[#00FFAB] text-[#030712] rounded-full font-bold shadow-lg transition-transform text-xl focus:outline-none focus:ring-2 focus:ring-[#00FFAB] mb-4 overflow-hidden group hover:scale-105"
           >
-            <span className="relative z-10">Get Started</span>
+            <span id="createAccount" className="relative z-10">Create Account</span>
             {/* Shine effect */}
             <span className="absolute left-0 top-0 h-full w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
               <span className="absolute left-[-75%] top-0 h-full w-1/2 bg-gradient-to-r from-white/60 to-transparent blur-lg rotate-12 group-hover:animate-shine" />

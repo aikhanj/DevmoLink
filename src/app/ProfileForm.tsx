@@ -10,6 +10,8 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Cropper, { Area } from 'react-easy-crop';
 import { createImage, getCroppedImg } from './utils/cropUtils';
+import clsx from "clsx";
+import { getAuth } from "firebase/auth";
 
 interface Profile {
   name: string;
@@ -31,9 +33,9 @@ const defaultProfile: Profile = {
   photos: [],
 };
 
-export default function ProfileForm({ onClose }: { onClose: () => void }) {
+export default function ProfileForm({ onClose, hideClose = false }: { onClose: () => void, hideClose?: boolean }) {
   const { data: session } = useSession();
-  const email = session?.user?.email;
+  const sessionEmail = session?.user?.email;
   const [profile, setProfile] = useState<Profile>(defaultProfile);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -59,11 +61,12 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
   const [photoCrop, setPhotoCrop] = useState({ x: 0, y: 0 });
   const [photoZoom, setPhotoZoom] = useState(1);
   const [photoCroppedAreaPixels, setPhotoCroppedAreaPixels] = useState<Area | null>(null);
+  const [invalidFields, setInvalidFields] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!email) return;
+    if (!sessionEmail) return;
     setLoadingProfile(true);
-    getDoc(doc(db, "profiles", email)).then((snap) => {
+    getDoc(doc(db, "profiles", sessionEmail)).then((snap) => {
       if (snap.exists()) {
         const data = { ...defaultProfile, ...snap.data() };
         setProfile(data);
@@ -71,7 +74,7 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
       }
       setLoadingProfile(false);
     });
-  }, [email]);
+  }, [sessionEmail]);
 
   useEffect(() => {
     if (profile.photos && profile.photos.length > 0) {
@@ -173,13 +176,25 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!email) return;
-    if (photoPreviews.length < 2) return;
+    const userEmail = sessionEmail ?? getAuth().currentUser?.email ?? null;
+    if (!userEmail) {
+      alert('User not authenticated yet. Please wait a moment and try again.');
+      return;
+    }
+    // Validate required fields
+    const newInvalid: string[] = [];
+    if (!profile.name) newInvalid.push("name");
+    if (!profile.birthday) newInvalid.push("birthday");
+    if (!profile.gender) newInvalid.push("gender");
+    if (!profile.timezone) newInvalid.push("timezone");
+    if (photoPreviews.length < 2) newInvalid.push("photos");
+    setInvalidFields(newInvalid);
+    if (newInvalid.length > 0) return;
     setSaving(true);
 
     let avatarUrl = profile.avatarUrl || "";
     if (avatarFile) {
-      const avatarStorageRef = ref(storage, `avatars/${email}_${Date.now()}`);
+      const avatarStorageRef = ref(storage, `avatars/${userEmail}_${Date.now()}`);
       await uploadBytes(avatarStorageRef, avatarFile);
       avatarUrl = await getDownloadURL(avatarStorageRef);
     } else if (profile.avatarUrl) {
@@ -199,7 +214,7 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
         const file = photoFiles[i];
         // Only upload files that are not already URLs
         if (typeof file === "string") continue;
-        const photoStorageRef = ref(storage, `photos/${email}_${Date.now()}_${i}`);
+        const photoStorageRef = ref(storage, `photos/${userEmail}_${Date.now()}_${i}`);
         await uploadBytes(photoStorageRef, file);
         const url = await getDownloadURL(photoStorageRef);
         uploadedPhotoUrls.push(url);
@@ -208,18 +223,15 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
       uploadedPhotoUrls = uploadedPhotoUrls.slice(0, 9);
     }
 
-    await setDoc(doc(db, "profiles", email), {
+    await setDoc(doc(db, "profiles", userEmail), {
       ...profile,
       avatarUrl,
       photos: uploadedPhotoUrls,
-      email,
+      email: userEmail,
     });
     setSaving(false);
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      onClose();
-    }, 1200);
+    alert('Profile Saved!');
+    onClose();
   };
 
   const timezones = [
@@ -250,14 +262,16 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
         className="bg-[#23272a] rounded-2xl p-8 w-[95vw] max-w-md shadow-2xl flex flex-col gap-4 relative overflow-y-auto max-h-[90vh]"
         style={{ opacity: loadingProfile ? 0.5 : 1, pointerEvents: loadingProfile ? 'none' : 'auto' }}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded-full transition"
-        >
-          ×
-        </button>
+        {!hideClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded-full transition"
+          >
+            ×
+          </button>
+        )}
         <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-[#00FFAB] to-[#009E6F] bg-clip-text text-transparent">My Profile</h2>
         <div className="flex flex-col items-center gap-2 mb-2">
           <label htmlFor="avatar-upload" className="cursor-pointer">
@@ -282,7 +296,7 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
         </div>
         <div className="flex flex-col items-center gap-2 mb-2">
           <label htmlFor="photos-upload" className="cursor-pointer">
-            <div className="flex flex-wrap gap-2 justify-center">
+            <div className={clsx("flex flex-wrap gap-2 justify-center", invalidFields.includes("photos") && "border-2 border-red-500 rounded-lg p-1")}>
               {photoPreviews.map((src, idx) => (
                 <div key={idx} className="relative group">
                   <div className="p-1 rounded-lg bg-gradient-to-r from-[#00FFAB] to-[#009E6F] aspect-[3/4] w-24 h-32">
@@ -308,36 +322,36 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
               onChange={handlePhotosChange}
             />
           </label>
-          <span className="text-[#00FFAB] text-xs">Upload 2-9 photos.</span>
+          <span className={clsx("text-xs", invalidFields.includes("photos") ? "text-red-400" : "text-[#00FFAB]")}>Upload 2-9 photos.<span className="text-green-400 ml-1">*</span></span>
         </div>
-        <label className="text-[#00FFAB] text-sm">
-          Name
+        <label className={clsx("text-[#00FFAB] text-sm flex items-center gap-1", invalidFields.includes("name") && "text-red-400")}>
+          Name <span className="text-green-400">*</span>
           <input
             name="name"
             value={profile.name}
             onChange={handleChange}
-            className="w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border border-[#00FFAB] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FFAB]"
+            className={clsx("w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FFAB]", invalidFields.includes("name") ? "border-red-500 placeholder:text-red-400" : "border-[#00FFAB]")}
             required
           />
         </label>
-        <label className="text-[#00FFAB] text-sm">
-          Birthday
+        <label className={clsx("text-[#00FFAB] text-sm flex items-center gap-1", invalidFields.includes("birthday") && "text-red-400")}>
+          Birthday <span className="text-green-400">*</span>
           <input
             type="date"
             name="birthday"
             value={profile.birthday}
             onChange={handleChange}
-            className="w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border border-[#00FFAB] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FFAB]"
+            className={clsx("w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FFAB]", invalidFields.includes("birthday") ? "border-red-500 placeholder:text-red-400" : "border-[#00FFAB]")}
             required
           />
         </label>
-        <label className="text-[#00FFAB] text-sm">
-          Gender
+        <label className={clsx("text-[#00FFAB] text-sm flex items-center gap-1", invalidFields.includes("gender") && "text-red-400")}>
+          Gender <span className="text-green-400">*</span>
           <select
             name="gender"
             value={profile.gender}
             onChange={handleChange}
-            className="w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border border-[#00FFAB] focus:outline-none focus:ring-2 focus:ring-[#00FFAB]"
+            className={clsx("w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border focus:outline-none focus:ring-2 focus:ring-[#00FFAB]", invalidFields.includes("gender") ? "border-red-500" : "border-[#00FFAB]")}
             required
           >
             <option value="">Select gender</option>
@@ -365,13 +379,13 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
             placeholder="Type and press Enter or comma..."
           />
         </label>
-        <label className="text-[#00FFAB] text-sm">
-          Timezone
+        <label className={clsx("text-[#00FFAB] text-sm flex items-center gap-1", invalidFields.includes("timezone") && "text-red-400")}>
+          Timezone <span className="text-green-400">*</span>
           <select
             name="timezone"
             value={profile.timezone}
             onChange={handleChange}
-            className="w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border border-[#00FFAB] focus:outline-none focus:ring-2 focus:ring-[#00FFAB]"
+            className={clsx("w-full mt-1 p-2 rounded-lg bg-[#18181b] text-white border focus:outline-none focus:ring-2 focus:ring-[#00FFAB]", invalidFields.includes("timezone") ? "border-red-500" : "border-[#00FFAB]")}
             required
           >
             <option value="">Select timezone</option>
@@ -384,10 +398,10 @@ export default function ProfileForm({ onClose }: { onClose: () => void }) {
           type="submit"
           className="w-full py-3 rounded-lg bg-[#00FFAB] text-[#030712] font-bold text-lg mt-4 shadow hover:bg-[#00e69c] transition"
           disabled={saving || loadingProfile || photoPreviews.length < 2}
+          onClick={() => console.log('Save button clicked')}
         >
           {saving ? "Saving..." : "Save"}
         </button>
-        {success && <div className="text-green-400 text-center mt-2">Profile saved!</div>}
       </form>
       {loadingProfile && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
