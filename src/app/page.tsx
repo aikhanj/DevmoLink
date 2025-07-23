@@ -921,7 +921,6 @@ export default function Home() {
           headers: { "Content-Type": "application/json" },
         });
         setSwipedIds((prev) => [...prev, showProfile.email]);
-        setCurrent((prev) => prev + 1);
       }
     },
     [showProfile]
@@ -982,8 +981,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#030712] font-mono transition-colors duration-500 px-4 overflow-hidden pb-[110px]">
-      <div className="flex-1 flex flex-col items-center justify-center w-full">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#030712] font-mono transition-colors duration-500 px-4 pb-[110px]">
+      <div className="flex-1 flex flex-col items-center w-full mt-10">
         {loading ? (
           null
         ) : isEmpty ? (
@@ -997,25 +996,28 @@ export default function Home() {
               </button>
               {/* Reset Button for Mock Data (isEmpty state) */}
               {isTestingMode && (
-                <button
-                  onClick={() => setSwipedIds([])}
-                  className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-base"
-                >
-                  Reset Profiles
-                </button>
+                              <button
+                onClick={() => {
+                  setSwipedIds([]);
+                  setCurrent(0);
+                }}
+                className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-base"
+              >
+                Reset Profiles
+              </button>
               )}
             </div>
           </div>
         ) : (
           <>
-          <div className="relative flex flex-col items-center z-10" style={{ minHeight: 700, height: 700, width: '100%' }}>
+          <div className="relative flex flex-col items-center z-10" style={{ minHeight: 500, height: 500, width: '100%' }}>
             {/* Render the next card underneath, if it exists */}
             {filteredProfiles[current + 1] && (
               <div
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center"
                 style={{ pointerEvents: 'none', height: '100%' }}
               >
-                <div style={{ filter: 'blur(2px) brightness(0.85) scale(0.97)', opacity: 0.7, width: '100%' }}>
+                <div style={{ width: '100%' }}>
                   <ProfileCard profile={filteredProfiles[current + 1]} onSwipe={() => {}} isActive={false} />
                 </div>
               </div>
@@ -1078,7 +1080,10 @@ export default function Home() {
           {isTestingMode && (
             <div className="fixed left-1/2 -translate-x-1/2 z-30" style={{ bottom: 20 }}>
               <button
-                onClick={() => setSwipedIds([])}
+                onClick={() => {
+                  setSwipedIds([]);
+                  setCurrent(0);
+                }}
                 className="px-4 py-2 bg-blue-500 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-base"
               >
                 Reset Profiles
