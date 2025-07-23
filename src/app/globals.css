@@ -3,11 +3,19 @@
 
 html, body {
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
   font-family: 'JetBrains Mono', monospace;
   background: #030712;
   color: #e0e0e0;
 }
+
+
+
+html.scroll-lock,
+body.scroll-lock {
+  overflow: hidden !important;
+}
+
 
 * {
   font-family: 'JetBrains Mono', monospace;

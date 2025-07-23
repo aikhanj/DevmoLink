@@ -83,8 +83,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         
         {/* Main content with fade, flex-1 for vertical centering */}
 
-        <main className={`h-full flex flex-col items-center justify-center w-full px-2 pb-20 md:pb-8 md:pt-16 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-          <div className="w-full max-w-md mx-auto">
+
+        <main className={`h-full flex flex-col items-stretch justify-center w-full px-4 pb-20 md:pb-8 md:pt-16 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          <div className="w-full max-w-md mx-auto flex flex-col h-full min-h-0">
+
             {children}
           </div>
         </main>
