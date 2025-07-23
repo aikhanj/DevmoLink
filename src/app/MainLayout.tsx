@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
+import TopNav from "./components/TopNav";
 
 const navItems = [
   { href: "/", label: "Home", icon: Flame },
@@ -57,7 +58,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <div className="shimmer h-32 rounded-xl"></div>
           </div>
         </div>
-        <header className="flex items-center justify-between px-4 py-3 h-14">
+        
+        {/* Desktop Navigation - Header */}
+        <TopNav onSettingsClick={() => setSettingsOpen(v => !v)} settingsOpen={settingsOpen} />
+        
+        {/* Mobile Header - only logo and settings */}
+        <header className="flex items-center justify-between px-4 py-3 h-14 md:hidden">
           <span className="font-bold text-xl text-[#00FFAB] select-none">
             HackMatch
           </span>
@@ -69,14 +75,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <Settings className={`w-6 h-6 ${settingsOpen ? 'text-[#00FFAB] drop-shadow-[0_0_8px_#00FFAB]' : 'text-gray-200'}`} />
           </button>
         </header>
+        
         {/* Main content with fade, flex-1 for vertical centering */}
-        <main className={`h-full flex flex-col items-center justify-center w-full px-2 pb-20 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <main className={`h-full flex flex-col items-center justify-center w-full px-2 pb-20 md:pb-8 md:pt-16 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           <div className="w-full max-w-md mx-auto">
             {children}
           </div>
         </main>
 
-        {/* Footer nav */}
+        {/* Footer nav - Mobile only */}
         {session && (
           <footer
             className="fixed bottom-0 left-0 right-0 z-40 h-16 w-full flex items-center justify-around bg-[#0f0f14]/95 backdrop-blur-md border-t border-white/10 shadow-[0_-1px_3px_rgba(0,0,0,0.45)] rounded-none md:hidden pb-[calc(env(safe-area-inset-bottom)+0.5rem)]"

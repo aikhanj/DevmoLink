@@ -21,7 +21,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, onSwipe: _onSwipe, i
   const [photoIdx, setPhotoIdx] = useState(0);
 
   // Responsive width handled via Tailwind (no direct window usage)
-  const cardWidth = 'w-[90vw] md:max-w-md';
+  const cardWidth = 'w-[90vw] md:max-w-xs';
 
   /**
    * Determine whether the click happened on the left or right half of the card
@@ -112,7 +112,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, onSwipe: _onSwipe, i
         'rounded-3xl bg-[#141c27] shadow-[0_8px_24px_rgba(0,0,0,0.45)] ring-1 ring-[#00FFAB]/10',
         'overflow-hidden'
       )}
-      style={{ minHeight: 700 }}
+      style={{ minHeight: 500 }}
     >
       {/* Photo Carousel */}
       <div 
