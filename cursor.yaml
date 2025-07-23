@@ -28,6 +28,7 @@ rules:
   - "Use React hooks effectively for state management and side effects"
   - "Implement proper loading states and error handling for better UX"
   - "Follow atomic design principles for component organization"
+  - "Make sure the LLM puts unique ids on every div tag so when you need to communicate changes you have a way to explain it."
 
 # Code Style Preferences
 style:
