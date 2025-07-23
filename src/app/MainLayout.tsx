@@ -47,6 +47,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   // console.log('settingsOpen:', settingsOpen);
 
+  // Determine if header should be hidden
+  const hideHeader = (!session) || pathname === "/create-account" || pathname === "/login";
+
   return (
     <LoadingContext.Provider value={{ loading, setLoading }}>
       <div className="min-h-screen grid grid-rows-[auto_1fr] bg-[#030712] dark">
@@ -60,16 +63,39 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
         
+        {/* HackMatch name always at top left */}
+        {hideHeader && (
+          <div className="fixed top-0 left-0 w-full z-40 flex items-center justify-between px-8 h-16 bg-black/60 backdrop-blur-lg shadow-inner">
+            <button
+              onClick={() => router.push('/')} 
+              className="font-mono text-2xl font-bold text-[#00FFAB] select-none tracking-tight"
+              style={{ background: 'none', border: 'none', outline: 'none' }}
+              aria-label="Go to home"
+            >
+              HackMatch
+            </button>
+            {!session && (
+              <button
+                onClick={() => router.push('/login')}
+                className="px-6 py-2 bg-[#00FFAB] text-[#030712] rounded-2xl text-lg font-extrabold shadow-2xl transition-transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#00FFAB]"
+                style={{ marginLeft: 'auto' }}
+              >
+                Login
+              </button>
+            )}
+          </div>
+        )}
+        
         {/* Desktop Navigation - Header */}
-        {!(pathname === '/' && !session) && (
+        {!hideHeader && (
           <TopNav onSettingsClick={() => setSettingsOpen(v => !v)} settingsOpen={settingsOpen} />
         )}
         
         {/* Mobile Header - only logo and settings */}
-        {!(pathname === '/' && !session) && (
+        {!hideHeader && (
           <header className="flex items-center justify-between px-4 py-3 h-14 md:hidden">
             <button 
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/')} 
             className="font-bold text-xl text-[#00FFAB] select-none">
               HackMatch
             </button>
@@ -90,16 +116,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             {children}
           </div>
         </main>
-
-        {/* Login Button for unauthenticated users on homepage */}
-        {(pathname === '/' && !session) && (
-          <button
-            onClick={() => router.push('/login')}
-            className="fixed top-6 right-6 z-[200] px-8 py-4 bg-[#00FFAB] text-[#030712] rounded-2xl text-2xl font-extrabold shadow-2xl transition-transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#00FFAB]"
-          >
-            Login
-          </button>
-        )}
 
         {/* Footer nav - Mobile only */}
         {session && (
