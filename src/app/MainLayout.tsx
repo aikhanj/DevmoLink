@@ -4,7 +4,7 @@ import { Settings, Flame, Heart, MessageCircle, User, Compass } from "lucide-rea
 import Link from "next/link";
 import { Dialog } from "@headlessui/react";
 import { signOut, useSession, signIn } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -25,6 +25,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { data: session } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const { theme = 'light', setTheme } = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -60,21 +61,27 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </div>
         
         {/* Desktop Navigation - Header */}
-        <TopNav onSettingsClick={() => setSettingsOpen(v => !v)} settingsOpen={settingsOpen} />
+        {!(pathname === '/' && !session) && (
+          <TopNav onSettingsClick={() => setSettingsOpen(v => !v)} settingsOpen={settingsOpen} />
+        )}
         
         {/* Mobile Header - only logo and settings */}
-        <header className="flex items-center justify-between px-4 py-3 h-14 md:hidden">
-          <span className="font-bold text-xl text-[#00FFAB] select-none">
-            HackMatch
-          </span>
-          <button
-            className={`z-[60] flex items-center px-2 py-1 transition duration-200 hover:scale-105 ${settingsOpen ? 'text-[#00FFAB] font-bold active-tab' : ''}`}
-            onClick={() => setSettingsOpen(v => !v)}
-            aria-label="Open settings"
-          >
-            <Settings className={`w-6 h-6 ${settingsOpen ? 'text-[#00FFAB] drop-shadow-[0_0_8px_#00FFAB]' : 'text-gray-200'}`} />
-          </button>
-        </header>
+        {!(pathname === '/' && !session) && (
+          <header className="flex items-center justify-between px-4 py-3 h-14 md:hidden">
+            <button 
+            onClick={() => router.push('/')}
+            className="font-bold text-xl text-[#00FFAB] select-none">
+              HackMatch
+            </button>
+            <button
+              className={`z-[60] flex items-center px-2 py-1 transition duration-200 hover:scale-105 ${settingsOpen ? 'text-[#00FFAB] font-bold active-tab' : ''}`}
+              onClick={() => setSettingsOpen(v => !v)}
+              aria-label="Open settings"
+            >
+              <Settings className={`w-6 h-6 ${settingsOpen ? 'text-[#00FFAB] drop-shadow-[0_0_8px_#00FFAB]' : 'text-gray-200'}`} />
+            </button>
+          </header>
+        )}
         
         {/* Main content with fade, flex-1 for vertical centering */}
 
@@ -83,6 +90,16 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             {children}
           </div>
         </main>
+
+        {/* Login Button for unauthenticated users on homepage */}
+        {(pathname === '/' && !session) && (
+          <button
+            onClick={() => router.push('/login')}
+            className="fixed top-6 right-6 z-[200] px-8 py-4 bg-[#00FFAB] text-[#030712] rounded-2xl text-2xl font-extrabold shadow-2xl transition-transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#00FFAB]"
+          >
+            Login
+          </button>
+        )}
 
         {/* Footer nav - Mobile only */}
         {session && (
