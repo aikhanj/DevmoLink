@@ -936,6 +936,8 @@ export default function Home() {
                     existing.push(showProfile.email);
                     localStorage.setItem('likedEmails', JSON.stringify(existing));
                   }
+                  // Dispatch event to update likes page
+                  window.dispatchEvent(new CustomEvent('hackmatch:match', { detail: { email: showProfile.email } }));
                 } catch {}
               }
               alert(`🎉 It's a Match! You and ${showProfile.name} liked each other!`);

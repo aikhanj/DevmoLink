@@ -3,6 +3,7 @@ import { Heart } from "lucide-react";
 import { useSession, signIn } from "next-auth/react";
 import { useEffect, useState, useContext } from "react";
 import { LoadingContext } from "../MainLayout";
+import dynamic from 'next/dynamic';
 
 interface Profile {
   id: string;
@@ -11,10 +12,14 @@ interface Profile {
   // Add other fields as needed
 }
 
+const ProfileCard = dynamic(() => import('../components/ProfileCard'), { ssr: false });
+
 export default function LikesPage() {
   const { data: session, status } = useSession();
   const [whoLikesMe, setWhoLikesMe] = useState<Profile[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
+  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
   const { setLoading } = useContext(LoadingContext);
 
   useEffect(() => {
@@ -28,6 +33,17 @@ export default function LikesPage() {
         setLocalLoading(false);
         setLoading(false);
       });
+    // Listen for match events from homepage
+    const handleMatch = (e: CustomEvent) => {
+      const matchedEmail = e.detail?.email;
+      if (matchedEmail) {
+        setWhoLikesMe(prev => prev.filter(p => p.email !== matchedEmail));
+      }
+    };
+    window.addEventListener('hackmatch:match', handleMatch as EventListener);
+    return () => {
+      window.removeEventListener('hackmatch:match', handleMatch as EventListener);
+    };
   }, [session]);
   
   if (status === "loading" || localLoading) {
@@ -67,9 +83,10 @@ export default function LikesPage() {
         ) : (
           <div className="border-2 border-dashed border-[#00FFAB]/30 rounded-xl p-4">
             {whoLikesMe.map((profile) => (
-              <div
+              <button
                 key={profile.id}
-                className="bg-[#18181b] rounded-xl shadow-lg shadow-black/20 p-4 mb-4 transition-all duration-150 hover:scale-[1.02] hover:shadow-xl"
+                className="w-full text-left bg-[#18181b] rounded-xl shadow-lg shadow-black/20 p-4 mb-4 transition-all duration-150 hover:scale-[1.02] hover:shadow-xl"
+                onClick={() => setSelectedProfile(profile)}
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
@@ -80,11 +97,68 @@ export default function LikesPage() {
                     <div className="text-[#00FFAB] text-sm font-mono">{profile.email}</div>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
+
+      {/* Profile Modal */}
+      {selectedProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#18181b] rounded-2xl shadow-2xl p-6 max-w-md w-full relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-white text-2xl"
+              onClick={() => setSelectedProfile(null)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <ProfileCard profile={{
+              ...selectedProfile,
+              photos: Array.isArray(((selectedProfile as unknown) as Record<string, unknown>).photos)
+                ? (((selectedProfile as unknown) as Record<string, unknown>).photos as string[])
+                : []
+            }} onSwipe={() => {}} isActive={true} />
+            <div className="flex gap-4 mt-6 justify-center">
+              <button
+                className="px-6 py-2 rounded-full bg-red-500 text-white font-bold hover:bg-red-600 transition"
+                disabled={actionLoading}
+                onClick={async () => {
+                  setActionLoading(true);
+                  await fetch('/api/swipes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: selectedProfile.email, direction: 'left' })
+                  });
+                  setActionLoading(false);
+                  setSelectedProfile(null);
+                  setWhoLikesMe(whoLikesMe.filter(p => p.id !== selectedProfile.id));
+                }}
+              >
+                Reject
+              </button>
+              <button
+                className="px-6 py-2 rounded-full bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition"
+                disabled={actionLoading}
+                onClick={async () => {
+                  setActionLoading(true);
+                  await fetch('/api/swipes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: selectedProfile.email, direction: 'right' })
+                  });
+                  setActionLoading(false);
+                  setSelectedProfile(null);
+                  setWhoLikesMe(whoLikesMe.filter(p => p.id !== selectedProfile.id));
+                }}
+              >
+                Match
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
