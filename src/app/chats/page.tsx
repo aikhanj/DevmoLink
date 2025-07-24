@@ -132,44 +132,8 @@ export default function ChatsPage() {
             >
               🧹 Reset ALL Data
             </button>
-                         <button
-               onClick={async () => {
-                 try {
-                   const response = await fetch("/api/admin/kill-test-bot", { method: "POST" });
-                   const result = await response.json();
-                   if (response.ok) {
-                     alert(`💀 ${result.message}`);
-                   } else {
-                     alert("Failed to kill test bots");
-                   }
-                 } catch (error) {
-                   console.error("Bot hunting error:", error);
-                 }
-                 setChats([]);
-               }}
-               className="px-4 py-2 bg-red-600 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-sm"
-             >
-               💀 KILL TEST BOTS
-             </button>
-             <button
-               onClick={async () => {
-                 try {
-                   const response = await fetch("/api/admin/kill-self-matches", { method: "POST" });
-                   const result = await response.json();
-                   if (response.ok) {
-                     alert(`🧹 ${result.message}`);
-                   } else {
-                     alert("Failed to kill self-matches");
-                   }
-                 } catch (error) {
-                   console.error("Self-match hunting error:", error);
-                 }
-                 setChats([]);
-               }}
-               className="px-4 py-2 bg-purple-600 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-sm"
-             >
-               🔫 KILL SELF-MATCHES
-             </button>
+            
+             
            </div>
            <div className="flex justify-center mb-4">
              <button
