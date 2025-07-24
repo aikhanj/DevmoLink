@@ -29,7 +29,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const { theme = 'light', setTheme } = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [profile, setProfile] = useState<{ avatarUrl?: string } | null>(null);
+  const [profile, setProfile] = useState<{ name?: string; avatarUrl?: string } | null>(null);
 
   React.useEffect(() => {
     const fetchProfile = async () => {
@@ -59,7 +59,18 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <LoadingContext.Provider value={{ loading, setLoading }}>
-      <div className="min-h-screen grid grid-rows-[auto_1fr] bg-[#030712] dark">
+      <div className="min-h-screen grid grid-rows-[auto_1fr] bg-[#030712] dark relative">
+        {/* Global SVG grid background overlay */}
+        <div className="pointer-events-none fixed inset-0 z-0 opacity-10">
+          <svg width="100%" height="100%" className="absolute inset-0" style={{ minHeight: '100vh' }}>
+            <defs>
+              <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+                <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#fff" strokeWidth="0.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
         {/* Global Loading Spinner Overlay with fade */}
         <div className={`fixed inset-0 z-[100] flex items-center justify-center pointer-events-none transition-opacity duration-300 ${loading ? 'opacity-100' : 'opacity-0'}`}>
           <div className="w-full max-w-md mx-auto space-y-4 px-4">
@@ -191,7 +202,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                     )}
                   </div>
                   <div>
-                    <div className="text-white font-semibold">{session.user?.name || session.user?.email}</div>
+                    <div className="text-white font-semibold">{profile?.name || session.user?.name || session.user?.email}</div>
                     <div className="text-[#00FFAB] text-xs">{session.user?.email}</div>
                   </div>
                 </div>

@@ -14,9 +14,13 @@ export async function GET() {
   const swipesSnap = await getDocs(swipesQ);
   const likedByEmails = swipesSnap.docs.map(doc => doc.data().from);
 
-  // Fetch profiles for each person who liked you
+  // Exclude users who are already matched with the current user
   const profiles = [];
   for (const email of likedByEmails) {
+    // Check if a match exists
+    const users = [currentUser, email].sort();
+    const matchDoc = await getDoc(doc(db, "matches", users.join("_")));
+    if (matchDoc.exists()) continue; // skip if already matched
     const profileSnap = await getDoc(doc(db, "profiles", email));
     if (profileSnap.exists()) {
       profiles.push({ id: email, ...profileSnap.data() });

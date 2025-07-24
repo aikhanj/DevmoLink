@@ -2,27 +2,21 @@
 import { useSession, signIn } from "next-auth/react";
 import { useContext, useEffect } from "react";
 import { LoadingContext } from "../MainLayout";
+import { useRouter } from "next/navigation";
 
 export default function ExplorePage() {
   const { data: session, status } = useSession();
   const { setLoading } = useContext(LoadingContext);
+  const router = useRouter();
   useEffect(() => {
     setLoading(status === "loading");
+    if (status !== "loading" && !session) {
+      router.push("/");
+    }
     return () => setLoading(false);
-  }, [status, setLoading]);
+  }, [status, session, setLoading, router]);
   if (status === "loading") return null;
-  if (!session) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#030712] px-4">
-        <button
-          onClick={() => signIn("google")}
-          className="px-6 py-3 bg-[#34B6FF] text-[#030712] rounded-full font-semibold shadow hover:scale-105 transition-transform text-lg mb-28 focus:outline-none focus:ring-2 focus:ring-[#00FFAB] font-mono"
-        >
-          Sign in with Google to continue
-        </button>
-      </div>
-    );
-  }
+  if (!session) return null;
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#030712] px-4">
       <div className="w-full max-w-md mb-28 mx-auto flex flex-col items-center gap-8 py-16">

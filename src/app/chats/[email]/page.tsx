@@ -109,9 +109,17 @@ export default function ChatThreadPage() {
           <ArrowLeft className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
-            {profile?.name ? profile.name[0] : "?"}
-          </div>
+          {profile?.photos && profile.photos.length > 0 ? (
+            <img
+              src={profile.photos[0]}
+              alt={profile?.name || decodedEmail}
+              className="w-10 h-10 rounded-full object-cover bg-gradient-to-r from-[#00FFAB] to-[#009E6F]"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
+              {profile?.name ? profile.name[0] : "?"}
+            </div>
+          )}
           <span className="font-semibold text-white text-lg font-mono">
             {profile?.name || decodedEmail}
           </span>
