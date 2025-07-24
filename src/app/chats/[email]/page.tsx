@@ -102,7 +102,7 @@ export default function ChatThreadPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#030712] flex flex-col">
+    <div className="h-screen w-full bg-[#030712] flex flex-col !h-[calc(100vh-64px)] mt-16"> 
       {/* Header */}
       <div className="flex items-center gap-4 px-4 py-3 bg-[#18181b] shadow">
         <button onClick={() => router.back()} aria-label="Back" className="text-[#00FFAB]">
