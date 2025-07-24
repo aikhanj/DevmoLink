@@ -8,15 +8,15 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session || !session.user || !session.user.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const from = session.user.email;
-  // Get all swipes where current user swiped right
-  const swipesQ = query(collection(db, "swipes"), where("from", "==", from), where("direction", "==", "right"));
+  const currentUser = session.user.email;
+  // Get all swipes where OTHER USERS swiped right on the CURRENT USER
+  const swipesQ = query(collection(db, "swipes"), where("to", "==", currentUser), where("direction", "==", "right"));
   const swipesSnap = await getDocs(swipesQ);
-  const likedEmails = swipesSnap.docs.map(doc => doc.data().to);
+  const likedByEmails = swipesSnap.docs.map(doc => doc.data().from);
 
-  // Fetch profiles for each liked email
+  // Fetch profiles for each person who liked you
   const profiles = [];
-  for (const email of likedEmails) {
+  for (const email of likedByEmails) {
     const profileSnap = await getDoc(doc(db, "profiles", email));
     if (profileSnap.exists()) {
       profiles.push({ id: email, ...profileSnap.data() });

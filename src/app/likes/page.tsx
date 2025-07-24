@@ -13,7 +13,7 @@ interface Profile {
 
 export default function LikesPage() {
   const { data: session, status } = useSession();
-  const [likes, setLikes] = useState<Profile[]>([]);
+  const [whoLikesMe, setWhoLikesMe] = useState<Profile[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
   const { setLoading } = useContext(LoadingContext);
 
@@ -24,7 +24,7 @@ export default function LikesPage() {
     fetch("/api/likes")
       .then(res => res.json())
       .then(data => {
-        setLikes(data);
+        setWhoLikesMe(data);
         setLocalLoading(false);
         setLoading(false);
       });
@@ -53,20 +53,20 @@ export default function LikesPage() {
   
   return (
     <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">
-      <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">Liked Profiles</h2>
+      <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">Who Likes You</h2>
       <div className="w-full max-w-md mx-auto space-y-4">
-        {likes.length === 0 ? (
+        {whoLikesMe.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="text-5xl mb-4">💔</div>
-            <div className="text-lg text-white mb-2 font-mono">No likes yet!</div>
-            <div className="text-[#00FFAB] mb-4 font-mono">Start swiping to find your matches.</div>
+            <div className="text-lg text-white mb-2 font-mono">Nobody has liked you yet!</div>
+            <div className="text-[#00FFAB] mb-4 font-mono">Keep swiping - someone will notice you soon!</div>
             <button className="px-4 py-2 bg-[#00FFAB] text-[#030712] rounded-full opacity-50 cursor-not-allowed font-mono" disabled>
               Refresh
             </button>
           </div>
         ) : (
           <div className="border-2 border-dashed border-[#00FFAB]/30 rounded-xl p-4">
-            {likes.map((profile) => (
+            {whoLikesMe.map((profile) => (
               <div
                 key={profile.id}
                 className="bg-[#18181b] rounded-xl shadow-lg shadow-black/20 p-4 mb-4 transition-all duration-150 hover:scale-[1.02] hover:shadow-xl"
