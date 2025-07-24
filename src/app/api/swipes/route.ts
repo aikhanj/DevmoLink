@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../firebase";
 import { collection, addDoc, getDocs, query, where, doc, setDoc, getDoc } from "firebase/firestore";
+import { randomBytes } from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/authOptions";
 
@@ -64,9 +65,13 @@ export async function POST(req: Request) {
     if (!snap.empty) {
       // Create a match document (sorted user emails for uniqueness)
       const users = [from, to].sort();
+      // Generate a random per-chat salt that will be stored with the match document.
+      const salt = randomBytes(16).toString("hex");
+
       await setDoc(doc(db, "matches", users.join("_")), {
         users,
         createdAt: Date.now(),
+        salt,
       });
       matched = true;
     }
