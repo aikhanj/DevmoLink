@@ -29,7 +29,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const { theme = 'light', setTheme } = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [profile, setProfile] = useState<{ avatarUrl?: string } | null>(null);
+  const [profile, setProfile] = useState<{ name?: string; avatarUrl?: string } | null>(null);
 
   React.useEffect(() => {
     const fetchProfile = async () => {
@@ -202,7 +202,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                     )}
                   </div>
                   <div>
-                    <div className="text-white font-semibold">{session.user?.name || session.user?.email}</div>
+                    <div className="text-white font-semibold">{profile?.name || session.user?.name || session.user?.email}</div>
                     <div className="text-[#00FFAB] text-xs">{session.user?.email}</div>
                   </div>
                 </div>
