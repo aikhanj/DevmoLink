@@ -15,6 +15,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
+  // 🚨 PREVENT SELF-SWIPES! 🚨
+  if (from === to) {
+    return NextResponse.json({ error: "Cannot swipe on yourself, narcissist!" }, { status: 400 });
+  }
+
   await addDoc(collection(db, "swipes"), {
     from,
     to,
