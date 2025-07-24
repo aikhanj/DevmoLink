@@ -1052,7 +1052,7 @@ export default function Home() {
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center"
                 style={{ pointerEvents: 'none', height: '100%' }}
               >
-                <div style={{ width: '100%' }}>
+                <div className="w-full max-w-md mx-auto">
                   <ProfileCard profile={filteredProfiles[current + 1]} onSwipe={() => {}} isActive={false} />
                 </div>
               </div>
@@ -1060,20 +1060,22 @@ export default function Home() {
             {/* Top card (swipeable) */}
             {filteredProfiles[current] && (
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center" style={{ height: '100%' }}>
-                <AnyTinderCard
-                  key={filteredProfiles[current].email}
-                  ref={tinderCardRef}
-                  flickDuration={30}
-                  swipeRequirementType="position"
-                  swipeThreshold={120}
-                  flickOnSwipe={true}
-                  onSwipe={handleSwipe}
-                  onCardLeftScreen={() => handleCardLeftScreen(filteredProfiles[current].email)}
-                  preventSwipe={['up', 'down']}
-                  className="select-none"
-                >
-                  <ProfileCard profile={filteredProfiles[current]} onSwipe={handleSwipe} isActive={true} />
-                </AnyTinderCard>
+                <div className="w-full max-w-md mx-auto">
+                  <AnyTinderCard
+                    key={filteredProfiles[current].email}
+                    ref={tinderCardRef}
+                    flickDuration={30}
+                    swipeRequirementType="position"
+                    swipeThreshold={120}
+                    flickOnSwipe={true}
+                    onSwipe={handleSwipe}
+                    onCardLeftScreen={() => handleCardLeftScreen(filteredProfiles[current].email)}
+                    preventSwipe={['up', 'down']}
+                    className="select-none"
+                  >
+                    <ProfileCard profile={filteredProfiles[current]} onSwipe={handleSwipe} isActive={true} />
+                  </AnyTinderCard>
+                </div>
               </div>
             )}
           </div>
