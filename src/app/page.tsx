@@ -919,14 +919,16 @@ export default function Home() {
         // Record swipe in backend and determine if it's a match
         (async () => {
           try {
-            await fetch("/api/swipes", {
+            const response = await fetch("/api/swipes", {
               method: "POST",
               body: JSON.stringify({ to: showProfile.email, direction: dir }),
               headers: { "Content-Type": "application/json" },
             });
-            // In mock mode we assume everyone already liked the user, so treat any right swipe as a match.
-            if (dir === "right") {
-              // Store to localStorage for Chats list fallback
+            const result = await response.json();
+            
+            // Only show match if both users swiped right (mutual match)
+            if (dir === "right" && result.matched) {
+              // Store to localStorage for Chats list fallback (only actual matches)
               if (typeof window !== 'undefined') {
                 try {
                   const existing = JSON.parse(localStorage.getItem('likedEmails') || '[]');
@@ -936,8 +938,11 @@ export default function Home() {
                   }
                 } catch {}
               }
-              alert(`Matched with ${showProfile.name}`);
+              alert(`🎉 It's a Match! You and ${showProfile.name} liked each other!`);
               router.push(`/chats/${encodeURIComponent(showProfile.email)}`);
+            } else if (dir === "right" && !result.matched) {
+              // Just a like, not a match yet
+              console.log(`You liked ${showProfile.name}, waiting for them to like you back`);
             }
           } catch (error) {
             console.error("Error recording swipe:", error);
