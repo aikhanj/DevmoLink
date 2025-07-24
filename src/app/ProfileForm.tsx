@@ -170,6 +170,7 @@ export default function ProfileForm({ onClose, hideClose = false }: { onClose: (
           age: data.age || 25,
           timezone: data.timezone || prev.timezone,
           skills: data.programmingLanguages || [],
+          themes: data.themes || [],
           description: data.description || "",
           github: data.github || "",
           linkedin: data.linkedin || "",
@@ -346,15 +347,15 @@ export default function ProfileForm({ onClose, hideClose = false }: { onClose: (
         avatarUrl = await getDownloadURL(avatarStorageRef)
       }
 
-             const uploadedPhotoUrls: string[] = [...photoPreviews]
-       
-       for (let i = 0; i < formData.photos.length; i++) {
-         const file = formData.photos[i]
-         const photoStorageRef = ref(storage, `photos/${userEmail}_${Date.now()}_${i}`)
-         await uploadBytes(photoStorageRef, file)
-         const url = await getDownloadURL(photoStorageRef)
-         uploadedPhotoUrls.push(url)
-       }
+      // Upload only the new photo files and get their Firebase URLs
+      const uploadedPhotoUrls: string[] = []
+      for (let i = 0; i < formData.photos.length; i++) {
+        const file = formData.photos[i]
+        const photoStorageRef = ref(storage, `photos/${userEmail}_${Date.now()}_${i}`)
+        await uploadBytes(photoStorageRef, file)
+        const url = await getDownloadURL(photoStorageRef)
+        uploadedPhotoUrls.push(url)
+      }
 
       await setDoc(doc(db, "profiles", userEmail), {
         name: formData.name,
@@ -501,10 +502,10 @@ export default function ProfileForm({ onClose, hideClose = false }: { onClose: (
                     </div>
                     <button
                       onClick={() => removePhoto(index)}
-                      className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity shadow-lg"
                       aria-label={`Remove photo ${index + 1}`}
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-4 h-4 text-white" />
                     </button>
                   </div>
                 ))}

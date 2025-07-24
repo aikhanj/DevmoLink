@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import clsx from 'clsx';
+import React, { useState, useRef, useEffect } from 'react';
+
+// How long the user must hold before the swipe interaction is forwarded (ms)
+const HOLD_MS = 150;
 
 interface ProfileCardProps {
   profile: {
@@ -7,180 +9,173 @@ interface ProfileCardProps {
     age?: number;
     email?: string;
     university?: string;
-    skills?: string[];
+    programmingLanguages?: string[];
+    themes?: string[];
     timezone?: string;
     photos: string[];
+    description?: string;
   };
-  // kept for API parity but unused inside the component now
   onSwipe: (dir: 'left' | 'right') => void;
   isActive: boolean;
 }
 
-const ProfileCard: React.FC<ProfileCardProps> = ({ profile, onSwipe: _onSwipe, isActive: _isActive }) => {
-  const photos = profile.photos || [];
+const ProfileCard: React.FC<ProfileCardProps> = ({ profile }) => {
+  const { name, age, programmingLanguages = [], themes = [], timezone, photos: rawPhotos = [], description } = profile;
+  
+  const photos = Array.from(new Set(rawPhotos.filter(Boolean)));
   const [photoIdx, setPhotoIdx] = useState(0);
+  const [isPressed, setIsPressed] = useState(false);
+  const [pressStart, setPressStart] = useState({ x: 0, y: 0, time: 0 });
+  const holdTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Responsive width handled via Tailwind (no direct window usage)
-  const cardWidth = 'w-[90vw] md:max-w-xs';
-
-  /**
-   * Determine whether the click happened on the left or right half of the card
-   * and update the currently displayed photo accordingly.
-   *
-   * Left side  -> show previous photo
-   * Right side -> show next photo
-   */
-  const [isMouseDown, setIsMouseDown] = useState(false);
-  const [mouseDownPos, setMouseDownPos] = useState({ x: 0, y: 0 });
-
-  function handleMouseDown(e: React.MouseEvent<HTMLDivElement>) {
-    setIsMouseDown(true);
-    setMouseDownPos({ x: e.clientX, y: e.clientY });
-  }
-
-  function handleMouseUp(e: React.MouseEvent<HTMLDivElement>) {
-    if (!isMouseDown) return;
-    
-    const deltaX = Math.abs(e.clientX - mouseDownPos.x);
-    const deltaY = Math.abs(e.clientY - mouseDownPos.y);
-    
-    // Only handle as click if mouse didn't move much (not a drag)
-    if (deltaX < 10 && deltaY < 10) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const isLeftSide = clickX < rect.width / 2;
-      
-      console.log('Photo navigation click detected:', { isLeftSide, clickX, width: rect.width });
-      
-      setPhotoIdx((prev) => {
-        const newIdx = isLeftSide 
-          ? (prev - 1 + photos.length) % photos.length
-          : (prev + 1) % photos.length;
-        console.log(`Photo changed: ${prev} → ${newIdx}`);
-        return newIdx;
-      });
+  const resetState = () => {
+    setIsPressed(false);
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
     }
-    
-    setIsMouseDown(false);
-  }
+  };
 
-  function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
-    const touch = e.touches[0];
-    setIsMouseDown(true);
-    setMouseDownPos({ x: touch.clientX, y: touch.clientY });
-  }
-
-  function handleTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
-    if (!isMouseDown) return;
+  const handleStart = (clientX: number, clientY: number, e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation(); // Prevent immediate TinderCard activation
+    setIsPressed(true);
+    setPressStart({ x: clientX, y: clientY, time: Date.now() });
     
-    const touch = e.changedTouches[0];
-    const deltaX = Math.abs(touch.clientX - mouseDownPos.x);
-    const deltaY = Math.abs(touch.clientY - mouseDownPos.y);
-    
-    // Only handle as tap if finger didn't move much (not a swipe)
-    if (deltaX < 10 && deltaY < 10) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const clickX = touch.clientX - rect.left;
-      const isLeftSide = clickX < rect.width / 2;
-      
-      console.log('Photo navigation tap detected:', { isLeftSide, clickX, width: rect.width });
-      
-      setPhotoIdx((prev) => {
-        const newIdx = isLeftSide 
-          ? (prev - 1 + photos.length) % photos.length
-          : (prev + 1) % photos.length;
-        console.log(`Photo changed: ${prev} → ${newIdx}`);
-        return newIdx;
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = setTimeout(() => {
+      // After hold time, let TinderCard take over by re-dispatching the event
+      const newEvent = new MouseEvent('mousedown', {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY
       });
-    }
+      (e.target as HTMLElement).dispatchEvent(newEvent);
+    }, HOLD_MS);
+  };
+
+  const handleEnd = (clientX: number, clientY: number) => {
+    if (!isPressed) return;
     
-    setIsMouseDown(false);
-  }
+    const timeDiff = Date.now() - pressStart.time;
+    const deltaX = Math.abs(clientX - pressStart.x);
+    const deltaY = Math.abs(clientY - pressStart.y);
+    
+    resetState();
+    
+    // If it was a quick tap (under hold time) and didn't move much, change photo
+    if (timeDiff < HOLD_MS && deltaX < 10 && deltaY < 10) {
+      const rect = document.querySelector('.profile-card')?.getBoundingClientRect();
+      if (rect) {
+        const clickX = clientX - rect.left;
+        const isLeftSide = clickX < rect.width / 2;
+        setPhotoIdx((prev) => 
+          isLeftSide 
+            ? (prev - 1 + photos.length) % photos.length 
+            : (prev + 1) % photos.length
+        );
+      }
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => () => resetState(), []);
+
+  // Progressive information reveal based on photo index
+  const getVisibleInfo = () => {
+    const info = {
+      showName: photoIdx >= 0,           // Always show name/age
+      showSkills: photoIdx >= 0,         // Photo 1+: Show programming languages immediately
+      showThemes: photoIdx >= 1,         // Photo 2+: Show project themes
+      showTimezone: photoIdx >= 2,       // Photo 3+: Show timezone
+      showDescription: photoIdx >= 3,    // Photo 4+: Show description (if exists)
+      showAllSkills: photoIdx >= 4,      // Photo 5+: Show all programming languages (not just 3)
+    };
+    return info;
+  };
+
+  const visibleInfo = getVisibleInfo();
 
   return (
     <div
-      className={clsx(
-        'relative z-20 select-none',
-        cardWidth,
-        'mx-auto',
-        'rounded-3xl bg-[#141c27] shadow-[0_8px_24px_rgba(0,0,0,0.45)] ring-1 ring-[#00FFAB]/10',
-        'overflow-hidden'
-      )}
-      style={{ minHeight: 500 }}
+      className="profile-card relative w-full h-full rounded-xl overflow-hidden bg-gray-900 shadow-lg will-change-transform select-none"
+      onMouseDown={(e) => handleStart(e.clientX, e.clientY, e)}
+      onMouseUp={(e) => handleEnd(e.clientX, e.clientY)}
+      onMouseLeave={resetState}
+      onTouchStart={(e) => {
+        const touch = e.touches[0];
+        handleStart(touch.clientX, touch.clientY, e);
+      }}
+      onTouchEnd={(e) => {
+        const touch = e.changedTouches[0];
+        handleEnd(touch.clientX, touch.clientY);
+      }}
     >
-      {/* Photo Carousel */}
-      <div 
-        className="relative pressable" 
-        style={{ height: '75%' }} 
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Left click zone indicator */}
-        <div className="absolute left-0 top-0 w-1/2 h-full z-10 flex items-center justify-start pl-4 opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          <div className="bg-black/50 rounded-full p-2">
-            <span className="text-white text-2xl">‹</span>
-          </div>
-        </div>
-        {/* Right click zone indicator */}
-        <div className="absolute right-0 top-0 w-1/2 h-full z-10 flex items-center justify-end pr-4 opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          <div className="bg-black/50 rounded-full p-2">
-            <span className="text-white text-2xl">›</span>
-          </div>
-        </div>
-        {photos.length > 0 ? (
+      {photos && photos.length > 0 ? (
+        <>
           <img
             src={photos[photoIdx]}
-            alt={`${profile.name} photo ${photoIdx + 1}`}
-            className="w-full aspect-[3/4] object-cover cursor-pointer rounded-t-3xl"
-            style={{ borderTopLeftRadius: '1.5rem', borderTopRightRadius: '1.5rem' }}
+            alt={`${name} photo ${photoIdx + 1}`}
+            className="w-full h-full object-cover"
             draggable={false}
-            onMouseDown={handleMouseDown}
           />
-        ) : (
-          <div className="w-full h-[70vw] max-h-[350px] bg-gray-800 flex items-center justify-center text-5xl text-gray-400">
-            ?
+          <ul className="absolute top-3 inset-x-4 flex gap-1 z-10">
+            {photos.map((_, i) => (
+              <li key={i} className={`flex-1 h-0.5 rounded-full ${i === photoIdx ? 'bg-white' : 'bg-white/30'}`} />
+            ))}
+          </ul>
+        </>
+      ) : (
+        <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+          <p className="text-gray-400">No photo available</p>
+        </div>
+      )}
+
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+        {/* Progressive information reveal */}
+        {visibleInfo.showName && (
+          <h2 className="text-white text-lg font-semibold animate-in fade-in duration-300">
+            {name}, {age}
+          </h2>
+        )}
+        
+        {visibleInfo.showDescription && description && (
+          <p className="text-gray-400 text-sm mt-1 animate-in fade-in duration-300">
+            {description}
+          </p>
+        )}
+        
+        {visibleInfo.showSkills && programmingLanguages.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2 animate-in fade-in duration-300">
+            {(visibleInfo.showAllSkills ? programmingLanguages : programmingLanguages.slice(0, 3)).map(s => (
+              <span key={s} className="px-3 py-1 text-xs rounded-full bg-white/10 text-emerald-300">
+                {s}
+              </span>
+            ))}
           </div>
         )}
-        {/* Gradient overlay for text legibility */}
-        <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-[#141c27] to-transparent" />
-        {/* Dots indicator */}
-        <div className="absolute inset-x-0 bottom-2 flex justify-center gap-1">
-          {photos.map((_, i) => (
-            <span
-              key={i}
-              className={clsx('h-2 w-2 rounded-full', i === photoIdx ? 'bg-emerald-400' : 'bg-gray-500/40')}
-            />
-          ))}
-        </div>
-      </div>
-      {/* Info Area */}
-      <div className="px-6 pt-4 pb-20">
-        <div className="flex items-center gap-3">
-          <span className="text-gray-100 text-xl font-bold">
-            {profile.name}
-            {profile.age ? `, ${profile.age}` : ''}
-          </span>
-        </div>
-        <div className="text-gray-400 text-sm mt-1">{profile.university || profile.email}</div>
-        <div className="flex flex-wrap gap-2 mt-3">
-          {(profile.skills || []).map((skill) => (
-            <span key={skill} className="bg-teal-600/20 text-teal-400 px-3 py-1 rounded-full text-xs font-medium">
-              {skill}
+        
+        {visibleInfo.showThemes && themes.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2 animate-in fade-in duration-300">
+            {themes.slice(0, 3).map(theme => (
+              <span key={theme} className="px-3 py-1 text-xs rounded-full bg-white/10 text-blue-300">
+                {theme}
+              </span>
+            ))}
+          </div>
+        )}
+        
+        {visibleInfo.showTimezone && timezone && (
+          <div className="mt-2 animate-in fade-in duration-300">
+            <span className="px-3 py-1 text-xs rounded-full bg-white/10 text-gray-300">
+              📍 {timezone}
             </span>
-          ))}
-          {profile.timezone && (
-            <span className="bg-cyan-600/20 text-cyan-400 px-3 py-1 rounded-full text-xs font-medium">
-              {profile.timezone}
-            </span>
-          )}
+          </div>
+        )}
+        
+        {/* Progress indicator */}
+        <div className="mt-3 text-xs text-white/50">
+          {photoIdx + 1} / {photos.length} photos
         </div>
       </div>
     </div>
