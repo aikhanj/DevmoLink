@@ -11,6 +11,9 @@ import { useRouter } from "next/navigation";
 const ProfileCard = dynamic(() => import('./components/ProfileCard'), { ssr: false });
 import { useSession, signIn } from "next-auth/react";
 import { LoadingContext } from "./MainLayout";
+import { db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
+import ProfileForm from "./ProfileForm";
 
 interface Profile {
   id: string;
@@ -24,6 +27,15 @@ interface Profile {
   age?: number;
   university?: string;
   photos: string[];
+}
+
+interface UserProfile {
+  name?: string;
+  avatarUrl?: string;
+  programmingLanguages?: string[];
+  themes?: string[];
+  timezone?: string;
+  photos?: string[];
 }
 
 async function fetchProfiles() {
@@ -53,6 +65,9 @@ export default function Home() {
   const [swipedIds, setSwipedIds] = useState<string[]>([]);
   const [loading, setLocalLoading] = useState(true);
   const { setLoading } = useContext(LoadingContext);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileComplete, setProfileComplete] = useState<boolean>(true);
+  const [showProfileForm, setShowProfileForm] = useState(false);
   type TinderCardRef = { swipe: (dir: 'left' | 'right' | 'up' | 'down') => Promise<void>; restoreCard: () => Promise<void> } | null;
   const tinderCardRef = useRef<TinderCardRef>(null);
   const [current, setCurrent] = useState(0);
@@ -860,6 +875,51 @@ export default function Home() {
     }
   ];
 
+  // Check user's profile completion status
+  useEffect(() => {
+    if (!session?.user?.email) return;
+    
+    const checkProfileCompletion = async () => {
+      try {
+        const userEmail = session.user?.email;
+        if (!userEmail) return;
+        
+        const profileSnap = await getDoc(doc(db, "profiles", userEmail));
+        if (!profileSnap.exists()) {
+          setUserProfile(null);
+          setProfileComplete(false);
+          return;
+        }
+        
+        const profile = profileSnap.data();
+        setUserProfile(profile);
+        
+        // Define required fields for a complete profile
+        const requiredFields = [
+          "name",
+          "avatarUrl", 
+          "programmingLanguages",
+          "themes",
+          "timezone"
+        ];
+        
+        const isComplete = requiredFields.every(field => {
+          if (Array.isArray(profile[field])) {
+            return profile[field].length > 0;
+          }
+          return Boolean(profile[field]);
+        });
+        
+        setProfileComplete(isComplete);
+      } catch (error) {
+        console.error("Error checking profile:", error);
+        setProfileComplete(false);
+      }
+    };
+    
+    checkProfileCompletion();
+  }, [session?.user?.email]);
+
   useEffect(() => {
     setLoading(true);
     
@@ -1012,6 +1072,114 @@ export default function Home() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // Show profile lock screen if profile is incomplete
+  if (!profileComplete && !showProfileForm) {
+    return (
+      <div className="relative min-h-screen w-full flex items-center justify-center bg-[#030712] font-mono transition-colors duration-500 px-4 overflow-hidden">
+        {/* Grid pattern overlay */}
+        <div className="pointer-events-none fixed inset-0 z-0 opacity-10">
+          <svg width="100%" height="100%" className="absolute inset-0" style={{ minHeight: '100vh' }}>
+            <defs>
+              <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+                <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#fff" strokeWidth="0.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+        
+        {/* Lock Screen UI */}
+        <div className="relative z-20 text-center max-w-md mx-auto px-6">
+          {/* Animated Lock Icon */}
+          <div className="relative mb-8">
+            <div className="w-24 h-24 mx-auto bg-gradient-to-br from-red-500/20 to-orange-500/20 rounded-full flex items-center justify-center border-4 border-red-500/30 animate-pulse">
+              <div className="text-4xl">🔒</div>
+            </div>
+            <div className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center animate-bounce">
+              <span className="text-white text-xl font-bold">!</span>
+            </div>
+          </div>
+
+          {/* Main Message */}
+          <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
+            Profile Locked
+          </h1>
+          
+          <p className="text-gray-300 text-lg mb-2 leading-relaxed">
+            <span className="text-red-400 font-semibold">Whoa there, eager beaver!</span>
+          </p>
+          <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+            You need to complete your profile before you can start matching with other hackers. 
+            Trust us, a complete profile gets <span className="text-[#00FFAB] font-semibold">3x more matches!</span>
+          </p>
+
+          {/* Psychology elements */}
+          <div className="bg-gradient-to-r from-[#00FFAB]/10 to-cyan-400/10 border border-[#00FFAB]/30 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-center mb-2">
+              <span className="text-2xl mr-2">⚡</span>
+              <span className="text-[#00FFAB] font-semibold">Quick Setup</span>
+            </div>
+            <p className="text-xs text-gray-400">
+              Just 2 minutes to unlock unlimited matching
+            </p>
+          </div>
+
+          {/* CTA Button */}
+          <button
+            onClick={() => setShowProfileForm(true)}
+            className="relative px-8 py-4 bg-gradient-to-r from-[#00FFAB] to-cyan-400 text-[#030712] rounded-full font-bold shadow-xl transition-all text-lg focus:outline-none focus:ring-4 focus:ring-[#00FFAB]/50 mb-4 w-full overflow-hidden group hover:scale-105 hover:shadow-2xl"
+          >
+            <span className="relative z-10 flex items-center justify-center">
+              <span className="mr-2">🚀</span>
+              Complete My Profile
+            </span>
+            {/* Shine effect */}
+            <span className="absolute left-0 top-0 h-full w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+              <span className="absolute left-[-75%] top-0 h-full w-1/2 bg-gradient-to-r from-white/60 to-transparent blur-lg rotate-12 group-hover:animate-shine" />
+            </span>
+          </button>
+
+          {/* Social proof */}
+          <div className="text-[#00FFAB] text-xs opacity-70">
+            Join 1,200+ verified hackers already matching
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show profile form if requested
+  if (showProfileForm) {
+    return (
+      <ProfileForm 
+        onClose={() => {
+          setShowProfileForm(false);
+          // Recheck profile completion after form is closed
+          if (session?.user?.email) {
+            const recheckProfile = async () => {
+              const userEmail = session.user?.email;
+              if (!userEmail) return;
+              
+              const profileSnap = await getDoc(doc(db, "profiles", userEmail));
+              if (profileSnap.exists()) {
+                const profile = profileSnap.data();
+                const requiredFields = ["name", "avatarUrl", "programmingLanguages", "themes", "timezone"];
+                const isComplete = requiredFields.every(field => {
+                  if (Array.isArray(profile[field])) {
+                    return profile[field].length > 0;
+                  }
+                  return Boolean(profile[field]);
+                });
+                setProfileComplete(isComplete);
+              }
+            };
+            recheckProfile();
+          }
+        }} 
+      />
     );
   }
 

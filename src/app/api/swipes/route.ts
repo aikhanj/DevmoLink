@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../firebase";
-import { collection, addDoc, getDocs, query, where, doc, setDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, doc, setDoc, getDoc } from "firebase/firestore";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
 
@@ -18,6 +18,30 @@ export async function POST(req: Request) {
   // 🚨 PREVENT SELF-SWIPES! 🚨
   if (from === to) {
     return NextResponse.json({ error: "Cannot swipe on yourself, narcissist!" }, { status: 400 });
+  }
+
+  // 🚨 PREVENT SWIPES IF PROFILE INCOMPLETE 🚨
+  const profileSnap = await getDoc(doc(db, "profiles", from));
+  if (!profileSnap.exists()) {
+    return NextResponse.json({ error: "Complete your profile before swiping." }, { status: 400 });
+  }
+  const profile = profileSnap.data();
+  // Define required fields for a complete profile
+  const requiredFields = [
+    "name",
+    "avatarUrl",
+    "programmingLanguages",
+    "themes",
+    "timezone"
+  ];
+  const isProfileComplete = requiredFields.every(field => {
+    if (Array.isArray(profile[field])) {
+      return profile[field].length > 0;
+    }
+    return Boolean(profile[field]);
+  });
+  if (!isProfileComplete) {
+    return NextResponse.json({ error: "Complete your profile before swiping." }, { status: 400 });
   }
 
   await addDoc(collection(db, "swipes"), {
