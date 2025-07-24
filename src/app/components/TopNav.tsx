@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Flame, Heart, MessageCircle, User, Compass, Settings } from 'lucide-react';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
 
 const navItems = [
   { href: '/', label: 'Home', icon: Flame },
@@ -18,10 +20,17 @@ interface TopNavProps {
 
 export default function TopNav({ onSettingsClick, settingsOpen = false }: TopNavProps = {}) {
   const pathname = usePathname();
-  
+  const router = useRouter();
   return (
     <nav className="hidden md:flex fixed top-0 left-0 w-full z-40 bg-black/60 backdrop-blur-lg shadow-inner h-16 items-center justify-between px-8">
-      <span className="font-mono text-2xl font-bold text-[#00FFAB] select-none tracking-tight">HackMatch</span>
+      <button
+        onClick={() => router.push('/')} 
+        className="font-mono text-2xl font-bold text-[#00FFAB] select-none tracking-tight"
+        style={{ background: 'none', border: 'none', outline: 'none' }}
+        aria-label="Go to home"
+      >
+        HackMatch
+      </button>
       <div className="flex gap-6 items-center">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href;
