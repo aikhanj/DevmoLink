@@ -47,8 +47,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   // console.log('settingsOpen:', settingsOpen);
 
+  // Determine if this is a chat page (needs full screen layout)
+  const isChatPage = pathname.startsWith("/chats/") && pathname !== "/chats";
+
+  const handleGoogleLogin = () => {
+    signIn("google", { callbackUrl: "/" });
+  };
+
   // Determine if header should be hidden
-  const hideHeader = (!session) || pathname === "/create-account" || pathname === "/login";
+  const hideHeader = (!session) || pathname === "/create-account" || pathname === "/login" || isChatPage;
 
   return (
     <LoadingContext.Provider value={{ loading, setLoading }}>
@@ -76,7 +83,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             </button>
             {!session && (
               <button
-                onClick={() => router.push('/login')}
+                // onClick={() => router.push('/login')}
+                onClick={handleGoogleLogin}
+
                 className="px-6 py-2 bg-[#00FFAB] text-[#030712] rounded-2xl text-lg font-extrabold shadow-2xl transition-transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#00FFAB]"
                 style={{ marginLeft: 'auto' }}
               >
@@ -111,14 +120,22 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         
         {/* Main content with fade, flex-1 for vertical centering */}
 
-        <main className={`h-full flex flex-col items-center justify-center w-full px-2 pb-20 md:pb-8 md:pt-16 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-          <div className="w-full max-w-md mx-auto">
+        {isChatPage ? (
+          /* Chat pages need full screen without constraints */
+          <main className={`h-full flex flex-col w-full transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
             {children}
-          </div>
-        </main>
+          </main>
+        ) : (
+          /* Regular pages with centering and constraints */
+          <main className={`h-full flex flex-col items-center justify-center w-full px-2 pb-20 md:pb-8 md:pt-16 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+            <div className="w-full max-w-md mx-auto">
+              {children}
+            </div>
+          </main>
+        )}
 
         {/* Footer nav - Mobile only */}
-        {session && (
+        {session && !isChatPage && (
           <footer
             className="fixed bottom-0 left-0 right-0 z-40 h-16 w-full flex items-center justify-around bg-[#0f0f14]/95 backdrop-blur-md border-t border-white/10 shadow-[0_-1px_3px_rgba(0,0,0,0.45)] rounded-none md:hidden pb-[calc(env(safe-area-inset-bottom)+0.5rem)]"
           >
