@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../firebase";
 import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "../auth/[...nextauth]/authOptions";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
