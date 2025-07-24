@@ -30,7 +30,12 @@ export const decryptMessage = (encryptedMessage: string, senderEmail: string, re
     const originalMessage = decrypted.toString(CryptoJS.enc.Utf8);
     
     // If decryption fails, return the original (might be unencrypted legacy message)
-    return originalMessage || encryptedMessage;
+    if (!originalMessage) {
+      console.log('Decryption failed for:', encryptedMessage.substring(0, 20) + '...');
+      return encryptedMessage;
+    }
+    
+    return originalMessage;
   } catch (error) {
     console.error('Decryption failed:', error);
     return encryptedMessage; // Fallback to show encrypted text if decryption fails

@@ -145,9 +145,20 @@ export default function ChatThreadPage() {
           const isMe = msg.from === session.user?.email;
           
           // Decrypt message for display
-          const displayText = msg.isEncrypted || msg.text.length > 50 
-            ? decryptMessage(msg.text, msg.from, decodedEmail)
-            : msg.text; // Legacy unencrypted messages
+          let displayText = msg.text;
+          
+          // Only try to decrypt if message is marked as encrypted OR looks encrypted
+          if (msg.isEncrypted && session.user?.email) {
+            displayText = decryptMessage(msg.text, session.user.email, decodedEmail);
+          } else if (msg.text.length > 50 && /^[A-Za-z0-9+/]+=*$/.test(msg.text) && session.user?.email) {
+            // Fallback: try to decrypt if it looks like encrypted text (base64-like)
+            const decrypted = decryptMessage(msg.text, session.user.email, decodedEmail);
+            // Only use decrypted version if it's different and looks like real text
+            if (decrypted !== msg.text && decrypted.length > 0 && !decrypted.includes('U2FsdGVk')) {
+              displayText = decrypted;
+            }
+          }
+          // Otherwise, show original text (unencrypted legacy messages)
           
           return (
             <div
