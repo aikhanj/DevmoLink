@@ -9,6 +9,7 @@ interface ChatProfile {
   id: string; // email
   name?: string;
   email?: string;
+  avatarUrl?: string;
 }
 
 export default function ChatsPage() {
@@ -29,30 +30,35 @@ export default function ChatsPage() {
     if (!session) return;
     setLoading(true);
     setLocalLoading(true);
-    Promise.all([
+    
+    // 🧹 CLEAR ANY PHANTOM LOCALSTORAGE DATA
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("likedEmails");
+    }
+         Promise.all([
+      // Get matches from database ONLY
       fetch("/api/matches").then((res) => res.json()).catch(() => []),
-      Promise.resolve().then(() => {
-        if (typeof window !== "undefined") {
-          try {
-            const stored = localStorage.getItem("likedEmails");
-            return stored ? JSON.parse(stored) : [];
-          } catch {
-            return [];
-          }
-        }
-        return [];
-      }),
-    ]).then(([matchedProfiles, localEmails]) => {
-      // 🚨 FILTER OUT SELF FROM BOTH SOURCES! 🚨
+      // Get all profiles for avatars
+      fetch("/api/profiles").then((res) => res.json()).catch(() => []),
+    ]).then(([matchedProfiles, allProfiles]) => {
+      // 🚨 FILTER OUT SELF AND ONLY SHOW REAL MATCHES! 🚨
       const currentUserEmail = session?.user?.email;
-             const filteredMatchedProfiles = matchedProfiles.filter((profile: ChatProfile) => profile.email !== currentUserEmail && profile.id !== currentUserEmail);
-      const filteredLocalEmails = (localEmails as string[]).filter((email) => email !== currentUserEmail);
-      
-      const localProfiles = filteredLocalEmails.map((email) => ({ id: email, email }));
-      const combined = [...filteredMatchedProfiles, ...localProfiles];
-      // Deduplicate by id (email)
-      const unique = combined.filter((item, idx, arr) => arr.findIndex((a) => a.id === item.id) === idx);
-      setChats(unique);
+      const filteredMatchedProfiles = matchedProfiles.filter((profile: ChatProfile) => 
+        profile.email !== currentUserEmail && profile.id !== currentUserEmail
+      );
+
+      // Merge matched profiles with their full profile data (including avatars)
+      const enrichedMatchedProfiles = filteredMatchedProfiles.map((match: ChatProfile) => {
+        const profile = allProfiles.find((p: ChatProfile) => p.email === match.id || p.id === match.id);
+        return {
+          ...match,
+          name: profile?.name || match.name,
+          avatarUrl: profile?.avatarUrl
+        };
+      });
+
+      // ONLY show actual matches from the database (no localStorage phantom data)
+      setChats(enrichedMatchedProfiles);
     }).finally(() => {
       setLocalLoading(false);
       setLoading(false);
@@ -193,15 +199,24 @@ export default function ChatsPage() {
                </div>
         </>
         )}
-        {chats.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="text-5xl mb-4">🎉</div>
-            <div className="text-lg text-white mb-2 font-mono">You&apos;re all caught up!</div>
-            <div className="text-[#00FFAB] mb-4 font-mono">We&apos;ll ping you when new hackers join.</div>
-            <button className="px-4 py-2 bg-[#00FFAB] text-[#030712] rounded-full opacity-50 cursor-not-allowed font-mono" disabled>
-              Refresh
-            </button>
-          </div>
+                 {chats.length === 0 ? (
+           <div className="flex flex-col items-center justify-center py-16">
+             <div className="text-5xl mb-4">🎉</div>
+             <div className="text-lg text-white mb-2 font-mono">You&apos;re all caught up!</div>
+             <div className="text-[#00FFAB] mb-4 font-mono">We&apos;ll ping you when new hackers join.</div>
+             <button 
+               onClick={() => {
+                 // Clear any phantom localStorage data and refresh
+                 if (typeof window !== "undefined") {
+                   localStorage.removeItem("likedEmails");
+                 }
+                 window.location.reload();
+               }}
+               className="px-4 py-2 bg-[#00FFAB] text-[#030712] rounded-full font-mono hover:scale-105 transition-transform"
+             >
+               🧹 Clear & Refresh
+             </button>
+           </div>
         ) : (
           chats.map((chat) => (
             <button
@@ -209,9 +224,13 @@ export default function ChatsPage() {
               onClick={() => router.push(`/chats/${encodeURIComponent(chat.id)}`)}
               className="w-full flex items-center gap-4 bg-[#18181b] rounded-xl shadow-lg shadow-black/20 p-4 transition-all duration-150 hover:scale-[1.02] hover:shadow-xl"
             >
-              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
-                {(chat.name ?? chat.email ?? chat.id)[0]}
-              </div>
+                             <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
+                 {chat.avatarUrl ? (
+                   <img src={chat.avatarUrl} alt={chat.name || chat.email} className="w-full h-full object-cover" />
+                 ) : (
+                   <span>{(chat.name ?? chat.email ?? chat.id)[0]}</span>
+                 )}
+               </div>
               <div className="flex-1 text-left">
                 <div className="font-semibold text-white text-[1.125rem] font-mono">{chat.name ?? chat.email ?? chat.id}</div>
                 <div className="text-[#00FFAB] text-sm truncate font-mono">Say hi and start collaborating!</div>
