@@ -14,6 +14,7 @@ import {
   DocumentData,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
+import { encryptMessage, decryptMessage } from "../../utils/encryption";
 
 interface Profile {
   id: string;
@@ -27,6 +28,7 @@ interface ChatMessage extends DocumentData {
   from: string;
   text: string;
   timestamp: number;
+  isEncrypted?: boolean;
 }
 
 export default function ChatThreadPage() {
@@ -77,13 +79,18 @@ export default function ChatThreadPage() {
 
   async function handleSend() {
     if (!newMessage.trim() || !session?.user?.email) return;
+    
+    // Encrypt the message before sending
+    const encryptedText = encryptMessage(newMessage.trim(), session.user.email, decodedEmail);
+    
     const chatId = [session.user.email, decodedEmail].sort().join("_");
     const msgsRef = collection(db, "matches", chatId, "messages");
     await addDoc(msgsRef, {
       from: session.user.email,
-      text: newMessage.trim(),
+      text: encryptedText,
       timestamp: Date.now(),
       createdAt: serverTimestamp(),
+      isEncrypted: true, // Mark as encrypted for future reference
     });
     setNewMessage("");
   }
@@ -124,18 +131,30 @@ export default function ChatThreadPage() {
             {profile?.name || decodedEmail}
           </span>
         </div>
+        {/* Encryption indicator */}
+        <div className="ml-auto">
+          <div className="text-xs text-[#00FFAB] flex items-center gap-1">
+            🔒 <span>Encrypted</span>
+          </div>
+        </div>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {messages.map((msg) => {
           const isMe = msg.from === session.user?.email;
+          
+          // Decrypt message for display
+          const displayText = msg.isEncrypted || msg.text.length > 50 
+            ? decryptMessage(msg.text, msg.from, decodedEmail)
+            : msg.text; // Legacy unencrypted messages
+          
           return (
             <div
               key={msg.id}
               className={`max-w-xs md:max-w-sm break-words rounded-xl px-4 py-2 text-sm font-mono shadow-lg ${isMe ? "ml-auto bg-[#00FFAB] text-[#030712]" : "mr-auto bg-[#18181b] text-white"}`}
             >
-              {msg.text}
+              {displayText}
             </div>
           );
         })}
@@ -146,7 +165,7 @@ export default function ChatThreadPage() {
       <div className="px-4 py-3 bg-[#18181b] flex items-center gap-2">
         <input
           type="text"
-          placeholder="Type your message..."
+          placeholder="Type your message... (encrypted)"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={onKeyDown}
