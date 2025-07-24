@@ -956,6 +956,10 @@ export default function Home() {
   const isTestingMode = process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === 'true' || 
                        (process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === undefined && process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true');
 
+  const handleGoogleSignup = () => {
+    signIn("google");
+  };
+
   if (status === "loading") return null;
   if (!session) {
     return (
@@ -986,7 +990,8 @@ export default function Home() {
             Find your perfect hackathon team, connect with like-minded builders, and join exciting projects. Sign up to start matching and chatting with other hackers!
           </p>
           <button
-            onClick={() => router.push('/create-account')}
+            // onClick={() => router.push('/create-account')}
+            onClick={handleGoogleSignup}
             className="relative px-8 py-4 bg-[#00FFAB] text-[#030712] rounded-full font-bold shadow-lg transition-transform text-xl focus:outline-none focus:ring-2 focus:ring-[#00FFAB] mb-4 overflow-hidden group hover:scale-105"
           >
             <span id="createAccount" className="relative z-10">Create Account</span>
