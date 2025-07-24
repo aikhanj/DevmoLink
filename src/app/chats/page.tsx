@@ -26,7 +26,7 @@ export default function ChatsPage() {
     setLoading(true);
     setLocalLoading(true);
     Promise.all([
-      fetch("/api/likes").then((res) => res.json()).catch(() => []),
+      fetch("/api/matches").then((res) => res.json()).catch(() => []),
       Promise.resolve().then(() => {
         if (typeof window !== "undefined") {
           try {
@@ -38,9 +38,9 @@ export default function ChatsPage() {
         }
         return [];
       }),
-    ]).then(([apiData, localEmails]) => {
+    ]).then(([matchedProfiles, localEmails]) => {
       const localProfiles = (localEmails as string[]).map((email) => ({ id: email, email }));
-      const combined = [...apiData, ...localProfiles];
+      const combined = [...matchedProfiles, ...localProfiles];
       // Deduplicate by id (email)
       const unique = combined.filter((item, idx, arr) => arr.findIndex((a) => a.id === item.id) === idx);
       setChats(unique);
@@ -76,24 +76,61 @@ export default function ChatsPage() {
     <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">
       <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">Chats</h2>
       <div className="w-full max-w-md mx-auto space-y-8">
-        {/* Reset button for mock/testing mode */}
-        {isTestingMode && chats.length > 0 && (
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => {
+                 {/* Reset buttons - always show for testing */}
+         <div className="flex justify-end mb-4 gap-2">
+           <button
+             onClick={() => {
+               if (typeof window !== "undefined") {
+                 localStorage.removeItem("likedEmails");
+               }
+               // Clear only current user's data
+               fetch("/api/chats/reset", { method: "POST" }).catch(() => {});
+               setChats([]);
+             }}
+             className="px-4 py-2 bg-blue-500 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-sm"
+           >
+             Reset My Data
+           </button>
+                       <button
+              onClick={async () => {
                 if (typeof window !== "undefined") {
                   localStorage.removeItem("likedEmails");
                 }
-                // Attempt to clear swipes & matches in backend (ignores errors in mock mode)
-                fetch("/api/chats/reset", { method: "POST" }).catch(() => {});
+                // Clear ALL users' data globally
+                try {
+                  const response = await fetch("/api/chats/reset-all", { method: "POST" });
+                  if (response.ok) {
+                    alert("🧹 All user data reset globally! Everyone can start fresh.");
+                  }
+                } catch (error) {
+                  console.error("Reset error:", error);
+                }
                 setChats([]);
               }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-sm"
+              className="px-4 py-2 bg-red-500 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-sm"
             >
-              Reset Chats
+              🧹 Reset ALL Data
             </button>
-          </div>
-        )}
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch("/api/admin/kill-test-bot", { method: "POST" });
+                  const result = await response.json();
+                  if (response.ok) {
+                    alert(`💀 ${result.message}`);
+                  } else {
+                    alert("Failed to kill test bots");
+                  }
+                } catch (error) {
+                  console.error("Bot hunting error:", error);
+                }
+                setChats([]);
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-sm"
+            >
+              💀 KILL TEST BOTS
+            </button>
+         </div>
         {chats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="text-5xl mb-4">🎉</div>
