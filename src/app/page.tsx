@@ -1126,9 +1126,9 @@ export default function Home() {
           </>
         )}
       </div>
-      <footer className="text-[#34B6FF] text-xs mt-10 mb-4 opacity-80 select-none font-mono">
+      {/* <footer className="text-[#34B6FF] text-xs mt-10 mb-4 opacity-80 select-none font-mono">
         &copy; {new Date().getFullYear()} HackMatch. Not affiliated with any university.
-      </footer>
+      </footer> */}
     </div>
   );
 }

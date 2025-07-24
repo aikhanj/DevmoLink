@@ -36,7 +36,7 @@ export default function LoginPage() {
   const handleGoogleLogin = () => {
     signIn("google", { callbackUrl: "/" });
   };
-
+  
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#030712] px-4">
       <div className="w-full max-w-md bg-[#18181b] rounded-2xl shadow-2xl p-8 flex flex-col gap-6">

@@ -49,7 +49,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   // Determine if this is a chat page (needs full screen layout)
   const isChatPage = pathname.startsWith("/chats/") && pathname !== "/chats";
-  
+
+  const handleGoogleLogin = () => {
+    signIn("google", { callbackUrl: "/" });
+  };
+
   // Determine if header should be hidden
   const hideHeader = (!session) || pathname === "/create-account" || pathname === "/login" || isChatPage;
 
@@ -79,7 +83,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             </button>
             {!session && (
               <button
-                onClick={() => router.push('/login')}
+                // onClick={() => router.push('/login')}
+                onClick={handleGoogleLogin}
+
                 className="px-6 py-2 bg-[#00FFAB] text-[#030712] rounded-2xl text-lg font-extrabold shadow-2xl transition-transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#00FFAB]"
                 style={{ marginLeft: 'auto' }}
               >
