@@ -20,6 +20,10 @@ export default function ChatsPage() {
   // Testing mode flag – mirrors logic on the Home page
   const isTestingMode = process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === "true" ||
     (process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === undefined && process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true");
+  
+  // 🔒 ADMIN MODE - Only show dangerous buttons to specific admin users
+  const isAdminMode = session?.user?.email === 'ajumashukurov@gmail.com' || // Your Gmail account
+    session?.user?.email === 'jaikh.saiful@gmail.com'; // Add other admin emails here
 
   useEffect(() => {
     if (!session) return;
@@ -81,7 +85,9 @@ export default function ChatsPage() {
     <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">
       <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">Chats</h2>
       <div className="w-full max-w-md mx-auto space-y-8">
-                 {/* Reset buttons - always show for testing */}
+                 {/* Admin buttons - only show in development or to admin users */}
+         {isAdminMode && (
+         <>
          <div className="flex justify-end mb-4 gap-2">
            <button
              onClick={() => {
@@ -182,9 +188,11 @@ export default function ChatsPage() {
                }}
                className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-800 text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all duration-200 text-sm border-2 border-red-400 animate-pulse"
              >
-               ☢️ NUCLEAR RESET ☢️
-             </button>
-         </div>
+                            ☢️ NUCLEAR RESET ☢️
+           </button>
+               </div>
+        </>
+        )}
         {chats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="text-5xl mb-4">🎉</div>
