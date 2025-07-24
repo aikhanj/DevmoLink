@@ -118,6 +118,23 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile }) => {
             alt={`${name} photo ${photoIdx + 1}`}
             className="w-full h-full object-cover"
             draggable={false}
+            onError={(e) => {
+              console.error(`Failed to load image for ${name}:`, {
+                url: photos[photoIdx],
+                photoIndex: photoIdx,
+                totalPhotos: photos.length,
+                allPhotos: photos
+              });
+              // Try to show placeholder or next photo
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+            }}
+            onLoad={() => {
+              console.log(`Successfully loaded image for ${name}:`, {
+                url: photos[photoIdx],
+                photoIndex: photoIdx
+              });
+            }}
           />
           <ul className="absolute top-3 inset-x-4 flex gap-1 z-10">
             {photos.map((_, i) => (
@@ -128,6 +145,10 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile }) => {
       ) : (
         <div className="w-full h-full bg-gray-800 flex items-center justify-center">
           <p className="text-gray-400">No photo available</p>
+          {/* Debug info */}
+          <div className="absolute bottom-2 left-2 text-xs text-red-400 bg-black/50 p-1 rounded">
+            {JSON.stringify({ name, photos: photos?.length || 0 })}
+          </div>
         </div>
       )}
 
