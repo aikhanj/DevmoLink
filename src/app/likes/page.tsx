@@ -4,6 +4,7 @@ import { useSession, signIn } from "next-auth/react";
 import { useEffect, useState, useContext } from "react";
 import { LoadingContext } from "../MainLayout";
 import dynamic from 'next/dynamic';
+import { useRouter } from "next/navigation";
 
 interface Profile {
   id: string;
@@ -16,11 +17,18 @@ const ProfileCard = dynamic(() => import('../components/ProfileCard'), { ssr: fa
 
 export default function LikesPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [whoLikesMe, setWhoLikesMe] = useState<Profile[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const { setLoading } = useContext(LoadingContext);
+
+  useEffect(() => {
+    if (status !== "loading" && !session) {
+      router.push("/");
+    }
+  }, [status, session, router]);
 
   useEffect(() => {
     if (!session) return;
@@ -54,18 +62,7 @@ export default function LikesPage() {
       </div>
     );
   }
-  if (!session) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#030712] font-mono transition-colors duration-500 mb-14">
-        <button
-          onClick={() => signIn("google")}
-          className="px-6 py-3 bg-[#00FFAB] text-[#030712] rounded-full font-semibold shadow hover:scale-105 transition-transform text-lg mb-28 focus:outline-none focus:ring-2 focus:ring-[#00FFAB] font-mono"
-        >
-          Sign in with Google to continue
-        </button>
-      </div>
-    );
-  }
+  if (!session) return null;
   
   return (
     <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">

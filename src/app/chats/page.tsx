@@ -65,13 +65,17 @@ export default function ChatsPage() {
     });
   }, [session]);
 
-  if (status === "loading" || localLoading) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-[#030712] font-mono">
-        <div className="shimmer h-8 w-32 rounded mb-4" />
-        <div className="shimmer h-24 w-64 rounded" />
-      </div>
-    );
+  useEffect(() => {
+    if (status !== "loading" && !session) {
+      router.push("/");
+    }
+  }, [status, session, router]);
+
+  if (status === "loading") {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+  if (!session) {
+    return null;
   }
 
   if (!session) {

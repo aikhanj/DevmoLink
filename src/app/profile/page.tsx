@@ -6,6 +6,7 @@ import { db } from "../../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import ProfileForm from "../ProfileForm";
 import { LoadingContext } from "../MainLayout";
+import { useRouter } from "next/navigation";
 
 interface Profile {
   name: string;
@@ -30,12 +31,19 @@ const MOCK_PROFILE = {
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const user = session?.user;
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLocalLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const { setLoading } = useContext(LoadingContext);
+
+  useEffect(() => {
+    if (status !== "loading" && !session) {
+      router.push("/");
+    }
+  }, [status, session, router]);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -68,18 +76,7 @@ export default function ProfilePage() {
   }, [session]);
 
   if (status === "loading" || loading) return null;
-  if (!session) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#282a36] via-[#5865f2] to-[#0f172a] font-sans transition-colors duration-500">
-        <button
-          onClick={() => signIn("google")}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-full font-semibold shadow hover:scale-105 transition-transform text-lg mb-28 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        >
-          Sign in with Google to continue
-        </button>
-      </div>
-    );
-  }
+  if (!session) return null;
   return (
     <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">
       <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">My Profile</h2>
