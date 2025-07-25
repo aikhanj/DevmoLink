@@ -15,6 +15,15 @@ interface ProfileCardProps {
     timezone?: string;
     photos: string[];
     description?: string;
+    gender?: string;
+    professions?: string[];
+    skills?: {
+      languages?: string[];
+      frameworks?: string[];
+    };
+    experienceLevel?: string;
+    interests?: string[];
+    tools?: string[];
   };
   onSwipe: (dir: 'left' | 'right') => void;
   isActive: boolean;
@@ -85,12 +94,13 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
   // Progressive information reveal based on photo index
   const getVisibleInfo = () => {
     const info = {
-      showName: photoIdx >= 0,           // Always show name/age
-      showSkills: photoIdx >= 0,         // Photo 1+: Show programming languages immediately
-      showThemes: photoIdx >= 1,         // Photo 2+: Show project themes
-      showTimezone: photoIdx >= 2,       // Photo 3+: Show timezone
-      showDescription: photoIdx >= 3,    // Photo 4+: Show description (if exists)
-      showAllSkills: photoIdx >= 4,      // Photo 5+: Show all programming languages (not just 3)
+      // Each photo shows only one type of info
+      showBasicInfo: photoIdx === 0,           // Photo 0: Basic info only
+      showProfessions: photoIdx === 1,         // Photo 1: Professions only  
+      showSkills: photoIdx === 2,              // Photo 2: Skills & Tools only
+      showTools: photoIdx === 2,               // Photo 2: Skills & Tools only
+      showExperience: photoIdx >= 3,           // Photo 3+: Experience & Interests
+      showInterests: photoIdx >= 3,            // Photo 3+: Experience & Interests
     };
     return info;
   };
@@ -163,49 +173,145 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
 
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4">
         {/* Progressive information reveal */}
-        {visibleInfo.showName && (
-          <h2 className="text-white text-lg font-semibold animate-in fade-in duration-300">
-            {name}, {age}
-          </h2>
-        )}
         
-        {visibleInfo.showDescription && description && (
-          <p className="text-gray-400 text-sm mt-1 animate-in fade-in duration-300">
-            {description}
-          </p>
-        )}
+                 {/* Basic Info: Name, Age, Gender (Photo 0 only) */}
+         {visibleInfo.showBasicInfo && (
+           <div className="animate-in fade-in duration-300">
+             <h2 className="text-white text-lg font-semibold">
+               {name}, {age}
+             </h2>
+                           {profile.gender && profile.gender.toLowerCase() !== 'other' && (
+                <div className="mt-2">
+                  <span className={`px-3 py-1 text-xs rounded-full border ${
+                    profile.gender.toLowerCase() === 'male' 
+                      ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                      : profile.gender.toLowerCase() === 'female'
+                      ? 'bg-pink-500/20 text-pink-300 border-pink-500/30'
+                      : profile.gender.toLowerCase() === 'non-binary'
+                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                      : 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+                  }`}>
+                    {profile.gender}
+                  </span>
+                </div>
+              )}
+           </div>
+         )}
         
-        {visibleInfo.showSkills && programmingLanguages.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2 animate-in fade-in duration-300">
-            {(visibleInfo.showAllSkills ? programmingLanguages : programmingLanguages.slice(0, 3)).map(s => (
-              <span key={s} className="px-3 py-1 text-xs rounded-full bg-white/10 text-emerald-300">
-                {s}
-              </span>
-            ))}
+        {/* Professions (Photo 1 only) */}
+        {visibleInfo.showProfessions && profile.professions && profile.professions.length > 0 && (
+          <div className="mt-3 animate-in fade-in duration-300">
+            <div className="flex flex-wrap gap-2">
+              {profile.professions.map(profession => (
+                <span key={profession} className="px-3 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  {profession}
+                </span>
+              ))}
+            </div>
           </div>
         )}
         
-        {visibleInfo.showThemes && themes.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2 animate-in fade-in duration-300">
-            {themes.slice(0, 3).map(theme => (
-              <span key={theme} className="px-3 py-1 text-xs rounded-full bg-white/10 text-blue-300">
-                {theme}
-              </span>
-            ))}
+        {/* Skills and Tools (Photo 2 only) */}
+        {(visibleInfo.showSkills || visibleInfo.showTools) && (
+          <div className="mt-3 space-y-3 animate-in fade-in duration-300">
+            {/* Skills */}
+            {visibleInfo.showSkills && (
+              <>
+                {/* Programming Languages from skills object */}
+                {profile.skills?.languages && profile.skills.languages.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {profile.skills.languages.slice(0, 4).map(skill => (
+                      <span key={skill} className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Frameworks */}
+                {profile.skills?.frameworks && profile.skills.frameworks.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {profile.skills.frameworks.slice(0, 3).map(skill => (
+                      <span key={skill} className="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Fallback to old programmingLanguages for backward compatibility */}
+                {!profile.skills && programmingLanguages.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {programmingLanguages.slice(0, 4).map(skill => (
+                      <span key={skill} className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+            
+            {/* Tools */}
+            {visibleInfo.showTools && profile.tools && profile.tools.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {profile.tools.slice(0, 4).map(tool => (
+                  <span key={tool} className="px-2 py-1 text-xs rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                    {tool}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
         
-        {visibleInfo.showTimezone && timezone && (
-          <div className="mt-2 animate-in fade-in duration-300">
-            <span className="px-3 py-1 text-xs rounded-full bg-white/10 text-gray-300">
-              📍 {timezone}
-            </span>
+        {/* Experience Level and Interests (Photo 3+) */}
+        {(visibleInfo.showExperience || visibleInfo.showInterests) && (
+          <div className="mt-3 space-y-3 animate-in fade-in duration-300">
+            {/* Experience Level */}
+            {visibleInfo.showExperience && profile.experienceLevel && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">Experience:</span>
+                <span className="px-3 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                  {profile.experienceLevel}
+                </span>
+              </div>
+            )}
+            
+            {/* Interests */}
+            {visibleInfo.showInterests && profile.interests && profile.interests.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-400 mb-2">Looking for:</p>
+                <div className="flex flex-wrap gap-2">
+                  {profile.interests.slice(0, 3).map(interest => (
+                    <span key={interest} className="px-2 py-1 text-xs rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                      {interest}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Description (if no categorized info to show) */}
+        {photoIdx >= 4 && description && (
+          <div className="mt-3 animate-in fade-in duration-300">
+            <p className="text-gray-400 text-sm">
+              {description}
+            </p>
           </div>
         )}
         
         {/* Progress indicator */}
-        <div className="mt-3 text-xs text-white/50">
-          {photoIdx + 1} / {photos.length} photos
+        <div className="mt-4 text-xs text-white/50 flex justify-between items-center">
+          <span>{photoIdx + 1} / {photos.length} photos</span>
+          <span className="text-xs text-gray-500">
+            {photoIdx === 0 && "Basic info"}
+            {photoIdx === 1 && "Profession"}
+            {photoIdx === 2 && "Skills & Tools"}
+            {photoIdx >= 3 && "Experience & Interests"}
+          </span>
         </div>
       </div>
       {isActive && (
