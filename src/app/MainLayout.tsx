@@ -207,26 +207,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                   </div>
                 </div>
               )}
-              {/* Theme Toggle */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-white">Theme</span>
-                <button
-                  className="px-3 py-1 rounded-lg bg-[#00FFAB] text-[#030712] font-semibold hover:bg-[#009E6F] transition"
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                >
-                  {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
-                </button>
-              </div>
-              {/* Notifications Toggle */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-white">Notifications</span>
-                <button
-                  className={`px-3 py-1 rounded-lg font-semibold transition ${notifications ? 'bg-[#00FFAB] text-[#030712]' : 'bg-gray-700 text-gray-300'}`}
-                  onClick={() => setNotifications(n => !n)}
-                >
-                  {notifications ? 'On' : 'Off'}
-                </button>
-              </div>
               {/* Edit Profile */}
               {session && (
                 <button
@@ -236,14 +216,24 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                   Edit Profile
                 </button>
               )}
-              {/* About Link */}
-              <a
-                href="#"
-                className="text-[#00FFAB] underline hover:text-[#009E6F] mb-4"
-                onClick={() => alert('HackMatch helps you find your perfect hackathon team!')}
-              >
-                About HackMatch
-              </a>
+              {/* Beta Tester Link */}
+              <div className="mt-auto flex flex-col gap-2">
+                <a
+                  href="https://t.me/hackmatchtesters"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors block text-center"
+                >
+                  Wanna become a beta tester or provide feedback?
+                </a>
+                <button
+                  className="self-end text-gray-400 hover:text-gray-200 mt-2"
+                  onClick={() => setSettingsOpen(false)}
+                  aria-label="Close settings"
+                >
+                  Close
+                </button>
+              </div>
               {/* Sign In/Out */}
               {session ? (
                 <button
@@ -260,13 +250,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                   Sign in
                 </button>
               )}
-              <button
-                className="mt-auto self-end text-gray-400 hover:text-gray-200"
-                onClick={() => setSettingsOpen(false)}
-                aria-label="Close settings"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>
