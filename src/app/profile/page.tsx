@@ -1,7 +1,7 @@
 "use client";
 import { User } from "lucide-react";
 import { useSession, signIn } from "next-auth/react";
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useCallback } from "react";
 import { db } from "../../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import ProfileForm from "../ProfileForm";
@@ -23,12 +23,6 @@ interface Profile {
   email?: string;
 }
 
-const MOCK_PROFILE = {
-  name: "You",
-  email: "you@campus.edu",
-  skills: ["React", "Figma", "Python"],
-};
-
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -36,8 +30,40 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLocalLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
   const { setLoading } = useContext(LoadingContext);
+
+  // Centralized profile fetching function
+  const fetchProfile = useCallback(async (email: string) => {
+    try {
+      const snap = await getDoc(doc(db, "profiles", email));
+      if (snap.exists()) {
+        const data = snap.data();
+        return {
+          name: data.name || "",
+          birthday: data.birthday || "",
+          gender: data.gender || "",
+          programmingLanguages: data.programmingLanguages || [],
+          lookingFor: data.lookingFor || [],
+          skills: Array.isArray(data.skills) 
+            ? data.skills 
+            : (typeof data.skills === "string" 
+                ? data.skills.split(",").map((s: string) => s.trim()) 
+                : []
+              ),
+          timeCommitment: data.timeCommitment || "",
+          timezone: data.timezone || "",
+          projectVibe: data.projectVibe || "",
+          isBoosted: data.isBoosted || false,
+          avatarUrl: data.avatarUrl || "",
+          email: data.email || email,
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     if (status !== "loading" && !session) {
@@ -46,37 +72,31 @@ export default function ProfilePage() {
   }, [status, session, router]);
 
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.email || status === "loading") return;
+    
     setLoading(true);
     setLocalLoading(true);
-    getDoc(doc(db, "profiles", user.email)).then((snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setProfile({
-          name: data.name || "",
-          birthday: data.birthday || "",
-          gender: data.gender || "",
-          programmingLanguages: data.programmingLanguages || [],
-          lookingFor: data.lookingFor || [],
-          skills: Array.isArray(data.skills) ? data.skills : (typeof data.skills === "string" ? data.skills.split(",").map((s: string) => s.trim()) : []),
-          timeCommitment: data.timeCommitment || "",
-          timezone: data.timezone || "",
-          projectVibe: data.projectVibe || "",
-          isBoosted: data.isBoosted || false,
-          avatarUrl: data.avatarUrl || "",
-          email: data.email || user.email,
-        });
-      } else {
-        setProfile(null);
-      }
+    
+    fetchProfile(user.email).then((profileData) => {
+      setProfile(profileData);
       setLocalLoading(false);
       setLoading(false);
-      setEditLoading(false);
     });
-  }, [session]);
+  }, [user?.email, status, fetchProfile, setLoading]);
+
+  const handleEditProfile = useCallback(async () => {
+    if (!user?.email) return;
+    
+    setLoading(true);
+    const profileData = await fetchProfile(user.email);
+    setProfile(profileData);
+    setLoading(false);
+    setShowEdit(true);
+  }, [user?.email, fetchProfile, setLoading]);
 
   if (status === "loading" || loading) return null;
   if (!session) return null;
+
   return (
     <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">
       <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">My Profile</h2>
@@ -89,36 +109,7 @@ export default function ProfilePage() {
           </div>
         )}
         <button
-          onClick={() => {
-            if (!user?.email) return;
-            setEditLoading(true);
-            setLoading(true);
-            // Refetch profile data before showing modal
-            getDoc(doc(db, "profiles", user.email)).then((snap) => {
-              if (snap.exists()) {
-                const data = snap.data();
-                setProfile({
-                  name: data.name || "",
-                  birthday: data.birthday || "",
-                  gender: data.gender || "",
-                  programmingLanguages: data.programmingLanguages || [],
-                  lookingFor: data.lookingFor || [],
-                  skills: Array.isArray(data.skills) ? data.skills : (typeof data.skills === "string" ? data.skills.split(",").map((s: string) => s.trim()) : []),
-                  timeCommitment: data.timeCommitment || "",
-                  timezone: data.timezone || "",
-                  projectVibe: data.projectVibe || "",
-                  isBoosted: data.isBoosted || false,
-                  avatarUrl: data.avatarUrl || "",
-                  email: data.email || user.email,
-                });
-              } else {
-                setProfile(null);
-              }
-              setEditLoading(false);
-              setLoading(false);
-              setShowEdit(true);
-            });
-          }}
+          onClick={handleEditProfile}
           className="px-4 py-2 bg-[#00FFAB] text-[#030712] rounded-full font-semibold shadow hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-[#00FFAB] font-mono"
         >
           Edit Profile
@@ -138,7 +129,7 @@ export default function ProfilePage() {
             : null}
         </div>
       </div>
-      {showEdit && !loading && <ProfileForm onClose={() => setShowEdit(false)} />}
+      {showEdit && !loading && <ProfileForm onClose={() => setShowEdit(false)} mode="edit" />}
     </div>
   );
 } 

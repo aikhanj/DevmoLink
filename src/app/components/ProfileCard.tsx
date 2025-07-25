@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { XMarkIcon, HeartIcon } from '@heroicons/react/24/solid';
 
 // How long the user must hold before the swipe interaction is forwarded (ms)
 const HOLD_MS = 150;
@@ -19,7 +20,7 @@ interface ProfileCardProps {
   isActive: boolean;
 }
 
-const ProfileCard: React.FC<ProfileCardProps> = ({ profile }) => {
+const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe }) => {
   const { name, age, programmingLanguages = [], themes = [], timezone, photos: rawPhotos = [], description } = profile;
   
   const photos = Array.from(new Set(rawPhotos.filter(Boolean)));
@@ -96,9 +97,17 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile }) => {
 
   const visibleInfo = getVisibleInfo();
 
+  // Preload all profile photos
+  useEffect(() => {
+    photos.forEach((url) => {
+      const img = new window.Image();
+      img.src = url;
+    });
+  }, [photos]);
+
   return (
     <div
-      className="profile-card relative w-full h-full rounded-xl overflow-hidden bg-gray-900 shadow-lg will-change-transform select-none"
+      className="profile-card relative w-full rounded-xl overflow-hidden bg-gray-900 shadow-lg will-change-transform select-none"
       onMouseDown={(e) => handleStart(e.clientX, e.clientY, e)}
       onMouseUp={(e) => handleEnd(e.clientX, e.clientY)}
       onMouseLeave={resetState}
@@ -199,6 +208,26 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile }) => {
           {photoIdx + 1} / {photos.length} photos
         </div>
       </div>
+      {isActive && (
+        <div className="absolute left-1/2 -translate-x-1/2 z-30" style={{ bottom: -70 }}>
+          <div className="flex items-center justify-center gap-8 h-14 px-6 rounded-full backdrop-blur-md bg-white/10 shadow-lg border border-white/10" style={{ minWidth: 200 }}>
+            <button
+              aria-label="Reject"
+              onClick={() => onSwipe('left')}
+              className="w-14 h-14 rounded-full flex items-center justify-center text-3xl hover:scale-110 transition bg-transparent transform-gpu"
+            >
+              <XMarkIcon className="w-8 h-8 text-red-400" />
+            </button>
+            <button
+              aria-label="Like"
+              onClick={() => onSwipe('right')}
+              className="w-14 h-14 rounded-full flex items-center justify-center text-3xl hover:scale-110 transition bg-transparent transform-gpu"
+            >
+              <HeartIcon className="w-8 h-8 text-emerald-400" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

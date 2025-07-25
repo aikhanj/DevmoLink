@@ -66,12 +66,21 @@ export default function Home() {
   const [loading, setLocalLoading] = useState(true);
   const { setLoading } = useContext(LoadingContext);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [profileComplete, setProfileComplete] = useState<boolean>(true);
+  const [profileComplete, setProfileComplete] = useState<boolean>(false);
+  // Control when to show the underlying (next) card to prevent initial flash
+  const [showNextCard, setShowNextCard] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
   type TinderCardRef = { swipe: (dir: 'left' | 'right' | 'up' | 'down') => Promise<void>; restoreCard: () => Promise<void> } | null;
   const tinderCardRef = useRef<TinderCardRef>(null);
   const [current, setCurrent] = useState(0);
 
+  // Reveal the next card once the component has mounted to prevent an initial flash
+  useEffect(() => {
+    // Delay to ensure the first render has completed
+    const timer = setTimeout(() => setShowNextCard(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
+  
   const MOCK_PROFILES = [
     {
       id: "1",
@@ -894,16 +903,30 @@ export default function Home() {
         const profile = profileSnap.data();
         setUserProfile(profile);
         
-        // Define required fields for a complete profile
-        const requiredFields = [
-          "name",
-          "avatarUrl", 
-          "programmingLanguages",
-          "themes",
-          "timezone"
-        ];
+                          // Define required fields for a complete profile
+          const requiredFields = [
+            "name",
+            "age", 
+            "avatarUrl",
+            "photos",
+            "timezone",
+            "gender",
+            "professions",
+            "skills",
+            "tools",
+            "experienceLevel",
+            "interests"
+          ];
         
         const isComplete = requiredFields.every(field => {
+          if (field === "skills") {
+            // Special handling for skills object - check if any skill category has content
+            const skills = profile[field];
+            if (!skills || typeof skills !== "object") return false;
+            return Object.values(skills).some(category => 
+              Array.isArray(category) && category.length > 0
+            );
+          }
           if (Array.isArray(profile[field])) {
             return profile[field].length > 0;
           }
@@ -1151,37 +1174,46 @@ export default function Home() {
     );
   }
 
-  // Show profile form if requested
-  if (showProfileForm) {
-    return (
-      <ProfileForm 
-        onClose={() => {
-          setShowProfileForm(false);
-          // Recheck profile completion after form is closed
-          if (session?.user?.email) {
-            const recheckProfile = async () => {
-              const userEmail = session.user?.email;
-              if (!userEmail) return;
-              
-              const profileSnap = await getDoc(doc(db, "profiles", userEmail));
-              if (profileSnap.exists()) {
-                const profile = profileSnap.data();
-                const requiredFields = ["name", "avatarUrl", "programmingLanguages", "themes", "timezone"];
-                const isComplete = requiredFields.every(field => {
-                  if (Array.isArray(profile[field])) {
-                    return profile[field].length > 0;
-                  }
-                  return Boolean(profile[field]);
-                });
-                setProfileComplete(isComplete);
-              }
-            };
-            recheckProfile();
-          }
-        }} 
-      />
-    );
-  }
+     // Show profile form if requested
+   if (showProfileForm) {
+     return (
+       <ProfileForm 
+         mode={userProfile ? "edit" : "create"}
+         onClose={() => {
+           setShowProfileForm(false);
+           // Recheck profile completion after form is closed
+           if (session?.user?.email) {
+             const recheckProfile = async () => {
+               const userEmail = session.user?.email;
+               if (!userEmail) return;
+               
+               const profileSnap = await getDoc(doc(db, "profiles", userEmail));
+               if (profileSnap.exists()) {
+                                 const profile = profileSnap.data();
+                                   const requiredFields = ["name", "age", "avatarUrl", "photos", "timezone", "gender", "professions", "skills", "tools", "experienceLevel", "interests"];
+                 const isComplete = requiredFields.every(field => {
+                   if (field === "skills") {
+                     // Special handling for skills object - check if any skill category has content
+                     const skills = profile[field];
+                     if (!skills || typeof skills !== "object") return false;
+                     return Object.values(skills).some(category => 
+                       Array.isArray(category) && category.length > 0
+                     );
+                   }
+                   if (Array.isArray(profile[field])) {
+                     return profile[field].length > 0;
+                   }
+                   return Boolean(profile[field]);
+                 });
+                 setProfileComplete(isComplete);
+               }
+             };
+             recheckProfile();
+           }
+         }} 
+       />
+     );
+   }
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#030712] font-mono transition-colors duration-500 px-4 pb-[110px]">
@@ -1213,21 +1245,24 @@ export default function Home() {
           </div>
         ) : (
           <>
-          <div className="relative flex flex-col items-center z-10" style={{ minHeight: 500, height: 500, width: '100%' }}>
+          <div className="relative flex flex-col items-center z-10" style={{ minHeight: 570, height: 570, width: '100%' }}>
             {/* Render the next card underneath, if it exists */}
-            {filteredProfiles[current + 1] && (
+            {filteredProfiles[current + 1] && showNextCard && (
               <div
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center"
-                style={{ pointerEvents: 'none', height: '100%' }}
+                style={{ pointerEvents: 'none', height: 500, zIndex: 0}}
+                aria-hidden="true"
               >
                 <div className="w-full max-w-md mx-auto">
-                  <ProfileCard profile={filteredProfiles[current + 1]} onSwipe={() => {}} isActive={false} />
+                  <div style={{ height: 500 }}>
+                    <ProfileCard profile={filteredProfiles[current + 1]} onSwipe={() => {}} isActive={false} />
+                  </div>
                 </div>
               </div>
             )}
             {/* Top card (swipeable) */}
             {filteredProfiles[current] && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center" style={{ height: '100%' }}>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center" style={{ height: 500 }}>
                 <div className="w-full max-w-md mx-auto">
                   <AnyTinderCard
                     key={filteredProfiles[current].email}
@@ -1240,46 +1275,13 @@ export default function Home() {
                     onCardLeftScreen={() => handleCardLeftScreen(filteredProfiles[current].email)}
                     preventSwipe={['up', 'down']}
                     className="select-none"
+                    style={{ height: 500 }}
                   >
                     <ProfileCard profile={filteredProfiles[current]} onSwipe={handleSwipe} isActive={true} />
                   </AnyTinderCard>
                 </div>
               </div>
             )}
-          </div>
-          <div className="fixed left-1/2 -translate-x-1/2 z-30" style={{ bottom: 80 }}>
-            <div className="flex items-center justify-center gap-8 h-14 px-6 rounded-full backdrop-blur-md bg-white/10 shadow-lg border border-white/10" style={{ minWidth: 200 }}>
-              <button
-                aria-label="Reject"
-                onClick={() => {
-                  console.log('Reject button clicked', tinderCardRef.current);
-                  if (tinderCardRef.current) {
-                    console.log('Calling swipe left');
-                    tinderCardRef.current.swipe('left');
-                  } else {
-                    console.log('TinderCard ref is null');
-                  }
-                }}
-                className="w-14 h-14 rounded-full flex items-center justify-center text-3xl hover:scale-110 transition bg-transparent"
-              >
-                <XMarkIcon className="w-8 h-8 text-red-400" />
-              </button>
-              <button
-                aria-label="Like"
-                onClick={() => {
-                  console.log('Like button clicked', tinderCardRef.current);
-                  if (tinderCardRef.current) {
-                    console.log('Calling swipe right');
-                    tinderCardRef.current.swipe('right');
-                  } else {
-                    console.log('TinderCard ref is null');
-                  }
-                }}
-                className="w-14 h-14 rounded-full flex items-center justify-center text-3xl hover:scale-110 transition bg-transparent"
-              >
-                <HeartIcon className="w-8 h-8 text-emerald-400" />
-              </button>
-            </div>
           </div>
           {/* Reset Button for Mock Data */}
           {isTestingMode && (
