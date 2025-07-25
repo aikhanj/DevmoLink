@@ -30,13 +30,22 @@ interface DebugResult {
   };
 }
 
+interface DebugProfile {
+  name?: string;
+  email: string;
+  hasAvatar?: boolean;
+  avatarUrl?: string;
+  photoCount: number;
+  photos: string[];
+}
+
 export default function DebugImagesPage() {
   const { data: session } = useSession();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DebugResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [allProfiles, setAllProfiles] = useState<any[]>([]);
+  const [allProfiles, setAllProfiles] = useState<DebugProfile[]>([]);
 
   const debugImages = async () => {
     if (!email.trim()) return;
