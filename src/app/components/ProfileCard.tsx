@@ -96,6 +96,14 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile }) => {
 
   const visibleInfo = getVisibleInfo();
 
+  // Preload all profile photos
+  useEffect(() => {
+    photos.forEach((url) => {
+      const img = new window.Image();
+      img.src = url;
+    });
+  }, [photos]);
+
   return (
     <div
       className="profile-card relative w-full h-full rounded-xl overflow-hidden bg-gray-900 shadow-lg will-change-transform select-none"
