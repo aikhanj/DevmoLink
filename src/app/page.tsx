@@ -66,7 +66,7 @@ export default function Home() {
   const [loading, setLocalLoading] = useState(true);
   const { setLoading } = useContext(LoadingContext);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [profileComplete, setProfileComplete] = useState<boolean>(true);
+  const [profileComplete, setProfileComplete] = useState<boolean>(false);
   // Control when to show the underlying (next) card to prevent initial flash
   const [showNextCard, setShowNextCard] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
@@ -903,16 +903,30 @@ export default function Home() {
         const profile = profileSnap.data();
         setUserProfile(profile);
         
-        // Define required fields for a complete profile
-        const requiredFields = [
-          "name",
-          "avatarUrl", 
-          "programmingLanguages",
-          "themes",
-          "timezone"
-        ];
+                          // Define required fields for a complete profile
+          const requiredFields = [
+            "name",
+            "age", 
+            "avatarUrl",
+            "photos",
+            "timezone",
+            "gender",
+            "professions",
+            "skills",
+            "tools",
+            "experienceLevel",
+            "interests"
+          ];
         
         const isComplete = requiredFields.every(field => {
+          if (field === "skills") {
+            // Special handling for skills object - check if any skill category has content
+            const skills = profile[field];
+            if (!skills || typeof skills !== "object") return false;
+            return Object.values(skills).some(category => 
+              Array.isArray(category) && category.length > 0
+            );
+          }
           if (Array.isArray(profile[field])) {
             return profile[field].length > 0;
           }
@@ -1160,37 +1174,46 @@ export default function Home() {
     );
   }
 
-  // Show profile form if requested
-  if (showProfileForm) {
-    return (
-      <ProfileForm 
-        onClose={() => {
-          setShowProfileForm(false);
-          // Recheck profile completion after form is closed
-          if (session?.user?.email) {
-            const recheckProfile = async () => {
-              const userEmail = session.user?.email;
-              if (!userEmail) return;
-              
-              const profileSnap = await getDoc(doc(db, "profiles", userEmail));
-              if (profileSnap.exists()) {
-                const profile = profileSnap.data();
-                const requiredFields = ["name", "avatarUrl", "programmingLanguages", "themes", "timezone"];
-                const isComplete = requiredFields.every(field => {
-                  if (Array.isArray(profile[field])) {
-                    return profile[field].length > 0;
-                  }
-                  return Boolean(profile[field]);
-                });
-                setProfileComplete(isComplete);
-              }
-            };
-            recheckProfile();
-          }
-        }} 
-      />
-    );
-  }
+     // Show profile form if requested
+   if (showProfileForm) {
+     return (
+       <ProfileForm 
+         mode={userProfile ? "edit" : "create"}
+         onClose={() => {
+           setShowProfileForm(false);
+           // Recheck profile completion after form is closed
+           if (session?.user?.email) {
+             const recheckProfile = async () => {
+               const userEmail = session.user?.email;
+               if (!userEmail) return;
+               
+               const profileSnap = await getDoc(doc(db, "profiles", userEmail));
+               if (profileSnap.exists()) {
+                                 const profile = profileSnap.data();
+                                   const requiredFields = ["name", "age", "avatarUrl", "photos", "timezone", "gender", "professions", "skills", "tools", "experienceLevel", "interests"];
+                 const isComplete = requiredFields.every(field => {
+                   if (field === "skills") {
+                     // Special handling for skills object - check if any skill category has content
+                     const skills = profile[field];
+                     if (!skills || typeof skills !== "object") return false;
+                     return Object.values(skills).some(category => 
+                       Array.isArray(category) && category.length > 0
+                     );
+                   }
+                   if (Array.isArray(profile[field])) {
+                     return profile[field].length > 0;
+                   }
+                   return Boolean(profile[field]);
+                 });
+                 setProfileComplete(isComplete);
+               }
+             };
+             recheckProfile();
+           }
+         }} 
+       />
+     );
+   }
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#030712] font-mono transition-colors duration-500 px-4 pb-[110px]">

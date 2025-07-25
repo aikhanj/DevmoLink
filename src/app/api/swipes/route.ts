@@ -30,12 +30,26 @@ export async function POST(req: Request) {
   // Define required fields for a complete profile
   const requiredFields = [
     "name",
+    "age", 
     "avatarUrl",
-    "programmingLanguages",
-    "themes",
-    "timezone"
+    "photos",
+    "timezone",
+    "gender",
+    "professions",
+    "skills",
+    "tools",
+    "experienceLevel",
+    "interests"
   ];
   const isProfileComplete = requiredFields.every(field => {
+    if (field === "skills") {
+      // Special handling for skills object - check if any skill category has content
+      const skills = profile[field];
+      if (!skills || typeof skills !== "object") return false;
+      return Object.values(skills).some(category => 
+        Array.isArray(category) && category.length > 0
+      );
+    }
     if (Array.isArray(profile[field])) {
       return profile[field].length > 0;
     }
