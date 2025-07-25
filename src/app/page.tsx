@@ -19,7 +19,11 @@ interface Profile {
   id: string;
   name: string;
   email: string;
-  skills?: string[];
+  skills?: {
+    languages?: string[];
+    frameworks?: string[];
+  };
+  programmingLanguages?: string[];
   timeCommitment?: string;
   timezone?: string;
   projectVibe?: string;
@@ -27,6 +31,11 @@ interface Profile {
   age?: number;
   university?: string;
   photos: string[];
+  gender?: string;
+  professions?: string[];
+  experienceLevel?: string;
+  interests?: string[];
+  tools?: string[];
 }
 
 interface UserProfile {
@@ -961,7 +970,15 @@ export default function Home() {
     if (useMockData) {
       // Use mock data for testing
       console.log('Using MOCK data');
-      setProfiles(MOCK_PROFILES);
+      // Transform mock data to match new interface
+      const transformedProfiles = MOCK_PROFILES.map(profile => ({
+        ...profile,
+        programmingLanguages: Array.isArray(profile.skills) ? profile.skills : [],
+        skills: Array.isArray(profile.skills) 
+          ? { languages: profile.skills, frameworks: [] }
+          : profile.skills
+      }));
+      setProfiles(transformedProfiles as Profile[]);
       fetch("/api/swipes").then(res => res.json()).then(data => setSwipedIds(data.swipedIds || []))
         .finally(() => {
           setLocalLoading(false);
