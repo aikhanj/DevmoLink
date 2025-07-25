@@ -67,6 +67,8 @@ export default function Home() {
   const { setLoading } = useContext(LoadingContext);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileComplete, setProfileComplete] = useState<boolean>(true);
+  // Control when to show the underlying (next) card to prevent initial flash
+  const [showNextCard, setShowNextCard] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
   type TinderCardRef = { swipe: (dir: 'left' | 'right' | 'up' | 'down') => Promise<void>; restoreCard: () => Promise<void> } | null;
   const tinderCardRef = useRef<TinderCardRef>(null);
@@ -1215,10 +1217,11 @@ export default function Home() {
           <>
           <div className="relative flex flex-col items-center z-10" style={{ minHeight: 500, height: 500, width: '100%' }}>
             {/* Render the next card underneath, if it exists */}
-            {filteredProfiles[current + 1] && (
+            {filteredProfiles[current + 1] && showNextCard && (
               <div
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center"
-                style={{ pointerEvents: 'none', height: '100%' }}
+                style={{ pointerEvents: 'none', height: '100%', zIndex: 0, opacity: 1 }}
+                aria-hidden="true"
               >
                 <div className="w-full max-w-md mx-auto">
                   <ProfileCard profile={filteredProfiles[current + 1]} onSwipe={() => {}} isActive={false} />
