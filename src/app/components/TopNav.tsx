@@ -9,8 +9,7 @@ const navItems = [
   { href: '/', label: 'Home', icon: Flame },
   { href: '/likes', label: 'Likes', icon: Heart },
   { href: '/chats', label: 'Chats', icon: MessageCircle },
-  { href: '/profile', label: 'Profile', icon: User },
-  { href: '/explore', label: 'Explore', icon: Compass },
+  { href: '/profile', label: 'Profile', icon: User }
 ];
 
 interface TopNavProps {
@@ -29,7 +28,7 @@ export default function TopNav({ onSettingsClick, settingsOpen = false }: TopNav
         style={{ background: 'none', border: 'none', outline: 'none' }}
         aria-label="Go to home"
       >
-        HackMatch
+        devmolink
       </button>
       <div className="flex gap-6 items-center">
         {navItems.map(({ href, label, icon: Icon }) => {

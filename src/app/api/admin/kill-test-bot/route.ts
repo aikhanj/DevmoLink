@@ -31,7 +31,7 @@ export async function POST() {
         name.includes("test_bot") ||
         email.includes("test") ||
         email.includes("bot") ||
-        data.university === "HackMatch University" ||
+        data.university === "devmolink University" ||
         (data.skills && Array.isArray(data.skills) && 
          data.skills.some((skill: string) => 
            ["testing", "automation"].includes(skill?.toLowerCase())

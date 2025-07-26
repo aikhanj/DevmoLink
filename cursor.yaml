@@ -1,8 +1,8 @@
-# Cursor Configuration for HackMatch - Tinder-style Hackathon Matching App
+# Cursor Configuration for devmolink - Tinder-style Hackathon Matching App
 
 # Project Context
 project:
-  name: "HackMatch"
+  name: "devmolink"
   description: "A Tinder-style swipe app for hackathon matching, connecting developers, designers, and entrepreneurs"
   type: "web-app"
 
