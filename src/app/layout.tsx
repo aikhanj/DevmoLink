@@ -8,7 +8,10 @@ import { Metadata } from "next";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Devmolink',
+  title: {
+    template: '%s - Devmolink',
+    default: 'Home - Devmolink'
+  },
   description: 'Connect with other developers. Whether for a job, a project, a relationship, devmolink is the place to be. Stop calling us the Tinder for developers.',
   icons: {
     icon: '/devmolinkGreenLogo.svg'

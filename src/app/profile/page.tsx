@@ -23,6 +23,7 @@ interface Profile {
   email?: string;
 }
 
+
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();

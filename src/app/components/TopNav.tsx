@@ -9,8 +9,7 @@ const navItems = [
   { href: '/', label: 'Home', icon: Flame },
   { href: '/likes', label: 'Likes', icon: Heart },
   { href: '/chats', label: 'Chats', icon: MessageCircle },
-  { href: '/profile', label: 'Profile', icon: User },
-  { href: '/explore', label: 'Explore', icon: Compass },
+  { href: '/profile', label: 'Profile', icon: User }
 ];
 
 interface TopNavProps {
