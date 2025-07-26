@@ -19,7 +19,11 @@ interface Profile {
   id: string;
   name: string;
   email: string;
-  skills?: string[];
+  skills?: {
+    languages?: string[];
+    frameworks?: string[];
+  };
+  programmingLanguages?: string[];
   timeCommitment?: string;
   timezone?: string;
   projectVibe?: string;
@@ -27,6 +31,11 @@ interface Profile {
   age?: number;
   university?: string;
   photos: string[];
+  gender?: string;
+  professions?: string[];
+  experienceLevel?: string;
+  interests?: string[];
+  tools?: string[];
 }
 
 interface UserProfile {
@@ -961,7 +970,15 @@ export default function Home() {
     if (useMockData) {
       // Use mock data for testing
       console.log('Using MOCK data');
-      setProfiles(MOCK_PROFILES);
+      // Transform mock data to match new interface
+      const transformedProfiles = MOCK_PROFILES.map(profile => ({
+        ...profile,
+        programmingLanguages: Array.isArray(profile.skills) ? profile.skills : [],
+        skills: Array.isArray(profile.skills) 
+          ? { languages: profile.skills, frameworks: [] }
+          : profile.skills
+      }));
+      setProfiles(transformedProfiles as Profile[]);
       fetch("/api/swipes").then(res => res.json()).then(data => setSwipedIds(data.swipedIds || []))
         .finally(() => {
           setLocalLoading(false);
@@ -1020,7 +1037,7 @@ export default function Home() {
                     localStorage.setItem('likedEmails', JSON.stringify(existing));
                   }
                   // Dispatch event to update likes page
-                  window.dispatchEvent(new CustomEvent('hackmatch:match', { detail: { email: showProfile.email } }));
+                  window.dispatchEvent(new CustomEvent('devmolink:match', { detail: { email: showProfile.email } }));
                 } catch {}
               }
               alert(`🎉 It's a Match! You and ${showProfile.name} liked each other!`);
@@ -1040,7 +1057,7 @@ export default function Home() {
   );
 
   const mainHeadline1 = "Welcome to";
-  const mainHeadline2 = "HackMatch";
+  const mainHeadline2 = "devmolink";
   
   // Check if we're in testing mode to show reset button
   const isTestingMode = process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === 'true' || 
@@ -1301,7 +1318,7 @@ export default function Home() {
         )}
       </div>
       {/* <footer className="text-[#34B6FF] text-xs mt-10 mb-4 opacity-80 select-none font-mono">
-        &copy; {new Date().getFullYear()} HackMatch. Not affiliated with any university.
+                  &copy; {new Date().getFullYear()} devmolink. Not affiliated with any university.
       </footer> */}
     </div>
   );

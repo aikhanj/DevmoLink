@@ -23,6 +23,7 @@ interface Profile {
   email?: string;
 }
 
+
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -119,6 +120,9 @@ export default function ProfilePage() {
       <div className="w-full max-w-md mx-auto bg-[#18181b] rounded-xl shadow-lg shadow-black/20 p-6">
         <div className="font-semibold text-white text-lg mb-1 font-mono">{profile?.name || user?.name || ""}</div>
         <div className="text-[#00FFAB] text-sm mb-2 font-mono">{profile?.email || user?.email || ""}</div>
+        <div className="text-gray-400 text-xs mb-4 text-center font-mono italic">
+          The more photos you add, the more information will be displayed on your profile!
+        </div>
         <div className="flex flex-wrap gap-2 justify-center">
           {Array.isArray(profile?.skills)
             ? profile.skills.map((skill: string) => (
