@@ -29,7 +29,7 @@ export default function TopNav({ onSettingsClick, settingsOpen = false }: TopNav
         style={{ background: 'none', border: 'none', outline: 'none' }}
         aria-label="Go to home"
       >
-        HackMatch
+        devmolink
       </button>
       <div className="flex gap-6 items-center">
         {navItems.map(({ href, label, icon: Icon }) => {

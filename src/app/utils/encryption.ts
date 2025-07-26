@@ -5,7 +5,7 @@ import CryptoJS from 'crypto-js';
 // keeps backward-compatibility for legacy chats that were created before salts existed.
 const generateChatKey = (email1: string, email2: string, salt: string): string => {
   const sortedEmails = [email1, email2].sort();
-  const safeSalt = salt || "hackmatch_salt";
+  const safeSalt = salt || "devmolink_salt";
   const baseKey = `${sortedEmails[0]}_${sortedEmails[1]}_${safeSalt}`;
 
   return CryptoJS.SHA256(baseKey).toString();

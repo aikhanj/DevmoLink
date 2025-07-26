@@ -48,9 +48,9 @@ export default function LikesPage() {
         setWhoLikesMe(prev => prev.filter(p => p.email !== matchedEmail));
       }
     };
-    window.addEventListener('hackmatch:match', handleMatch as EventListener);
+          window.addEventListener('devmolink:match', handleMatch as EventListener);
     return () => {
-      window.removeEventListener('hackmatch:match', handleMatch as EventListener);
+              window.removeEventListener('devmolink:match', handleMatch as EventListener);
     };
   }, [session]);
   

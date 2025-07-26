@@ -1020,7 +1020,7 @@ export default function Home() {
                     localStorage.setItem('likedEmails', JSON.stringify(existing));
                   }
                   // Dispatch event to update likes page
-                  window.dispatchEvent(new CustomEvent('hackmatch:match', { detail: { email: showProfile.email } }));
+                  window.dispatchEvent(new CustomEvent('devmolink:match', { detail: { email: showProfile.email } }));
                 } catch {}
               }
               alert(`🎉 It's a Match! You and ${showProfile.name} liked each other!`);
@@ -1040,7 +1040,7 @@ export default function Home() {
   );
 
   const mainHeadline1 = "Welcome to";
-  const mainHeadline2 = "HackMatch";
+  const mainHeadline2 = "devmolink";
   
   // Check if we're in testing mode to show reset button
   const isTestingMode = process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === 'true' || 
@@ -1301,7 +1301,7 @@ export default function Home() {
         )}
       </div>
       {/* <footer className="text-[#34B6FF] text-xs mt-10 mb-4 opacity-80 select-none font-mono">
-        &copy; {new Date().getFullYear()} HackMatch. Not affiliated with any university.
+                  &copy; {new Date().getFullYear()} devmolink. Not affiliated with any university.
       </footer> */}
     </div>
   );

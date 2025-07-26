@@ -81,7 +81,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
         
-        {/* HackMatch name always at top left */}
+                  {/* devmolink name always at top left */}
         {hideHeader && (
           <div className="fixed top-0 left-0 w-full z-40 flex items-center justify-between px-8 h-16 bg-black/60 backdrop-blur-lg shadow-inner">
             <button
@@ -90,7 +90,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               style={{ background: 'none', border: 'none', outline: 'none' }}
               aria-label="Go to home"
             >
-              HackMatch
+              devmolink
             </button>
             {!session && (
               <button
@@ -117,7 +117,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <button 
             onClick={() => router.push('/')} 
             className="font-bold text-xl text-[#00FFAB] select-none">
-              HackMatch
+              devmolink
             </button>
             <button
               className={`z-[60] flex items-center px-2 py-1 transition duration-200 hover:scale-105 ${settingsOpen ? 'text-[#00FFAB] font-bold active-tab' : ''}`}
@@ -219,7 +219,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               {/* Beta Tester Link */}
               <div className="mt-auto flex flex-col gap-2">
                 <a
-                  href="https://t.me/hackmatchtesters"
+                  href="https://t.me/devmolinktesters"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors block text-center"
