@@ -642,7 +642,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     
     switch (field) {
       case 'name':
-        return !formData.name ? 'Name is required' : null
+        if (!formData.name) return 'Name is required'
+        if (formData.name.length > 30) return 'Name must be 30 characters or less'
+        return null
       case 'age':
         return formData.age === 0 ? 'Age is required' : null
       case 'gender':
@@ -836,7 +838,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
               <input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value.slice(0, 30) }))}
                 onBlur={() => handleBlur('name')}
                 className={cn(
                   "w-full px-3 py-2 bg-gray-800 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent",
@@ -844,6 +846,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                 )}
                 placeholder="Your full name"
                 aria-label="Full name"
+                maxLength={30}
               />
               {getFieldError('name') && (
                 <p className="text-sm text-red-500 mt-1">{getFieldError('name')}</p>
