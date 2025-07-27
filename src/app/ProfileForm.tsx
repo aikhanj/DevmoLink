@@ -196,6 +196,8 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const skillsSearchRef = useRef<HTMLInputElement>(null)
   const toolsSearchRef = useRef<HTMLInputElement>(null)
+  const skillsDropdownRef = useRef<HTMLDivElement>(null)
+  const toolsDropdownRef = useRef<HTMLDivElement>(null)
 
   // Auto-detect timezone
   useEffect(() => {
@@ -604,6 +606,22 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     return Object.values(formData.skills).reduce((total, skills) => total + skills.length, 0)
   }
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (skillsDropdownRef.current && !skillsDropdownRef.current.contains(event.target as Node)) {
+        setShowSkillsDropdown(false)
+      }
+      if (toolsDropdownRef.current && !toolsDropdownRef.current.contains(event.target as Node)) {
+        setShowToolsDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -895,7 +913,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
             </div>
 
             {/* Search input */}
-            <div className="relative">
+            <div className="relative" ref={skillsDropdownRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -916,7 +934,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
 
               {/* Dropdown */}
               {showSkillsDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg max-h-48 overflow-y-auto z-10">
+                <div
+                  className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg max-h-48 overflow-y-auto z-10"
+                >
                   {filteredSkills.length > 0 ? (
                     filteredSkills.map((skill) => (
                       <button
@@ -971,7 +991,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
             </div>
 
             {/* Search input */}
-            <div className="relative">
+            <div className="relative" ref={toolsDropdownRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -992,7 +1012,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
 
               {/* Dropdown */}
               {showToolsDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg max-h-48 overflow-y-auto z-10">
+                <div
+                  className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg max-h-48 overflow-y-auto z-10"
+                >
                   {filteredTools.length > 0 ? (
                     filteredTools.map((tool) => (
                       <button
