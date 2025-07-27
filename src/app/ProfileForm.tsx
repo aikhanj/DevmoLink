@@ -385,11 +385,18 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
 
   // Remove photo
   const removePhoto = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      photos: prev.photos.filter((_, i) => i !== index),
-    }))
+    // Always remove preview at this index
     setPhotoPreviews(prev => prev.filter((_, i) => i !== index))
+
+    // Determine if this index corresponds to a local File in formData.photos
+    const remoteCount = photoPreviews.length - formData.photos.length
+    if (index >= remoteCount) {
+      const fileIndex = index - remoteCount
+      setFormData((prev) => ({
+        ...prev,
+        photos: prev.photos.filter((_, i) => i !== fileIndex),
+      }))
+    }
   }
 
   // Drag and drop for photos
