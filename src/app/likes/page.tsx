@@ -92,11 +92,11 @@ export default function LikesPage() {
                       <img
                         src={p.photos[0]}
                         alt={profile.name}
-                        className="w-12 h-12 rounded-full object-cover bg-gradient-to-r from-[#00FFAB] to-[#009E6F]"
+                        className="w-20 h-20 rounded-full object-cover bg-gradient-to-r from-[#00FFAB] to-[#009E6F]"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
-                        <Heart className="w-6 h-6" />
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
+                        <Heart className="w-8 h-8" />
                       </div>
                     );
                   })()}
