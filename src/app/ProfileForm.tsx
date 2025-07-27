@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { db, storage } from "../firebase"
 import { doc, getDoc, setDoc } from "firebase/firestore"
@@ -434,22 +434,17 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     e.preventDefault()
     if (draggedPhoto === null || draggedPhoto === index) return
 
-    const newPhotos = [...formData.photos]
+    // Simple array reorder - just move what the user sees
     const newPreviews = [...photoPreviews]
-    
-    if (draggedPhoto < newPhotos.length && index < newPhotos.length) {
-      const draggedItem = newPhotos[draggedPhoto]
-      newPhotos.splice(draggedPhoto, 1)
-      newPhotos.splice(index, 0, draggedItem)
-      setFormData((prev) => ({ ...prev, photos: newPhotos }))
-    }
-    
-    const draggedPreview = newPreviews[draggedPhoto]
+    const draggedItem = newPreviews[draggedPhoto]
     newPreviews.splice(draggedPhoto, 1)
-    newPreviews.splice(index, 0, draggedPreview)
+    newPreviews.splice(index, 0, draggedItem)
     setPhotoPreviews(newPreviews)
+    
     setDraggedPhoto(index)
   }
+
+  // Touch-based drag for mobile - REMOVED
 
   const handleAvatarUpload = (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -894,26 +889,32 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
               {photoPreviews.map((photo, index) => (
                 <div
                   key={index}
-                  className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden group cursor-move"
+                  className={`relative aspect-square bg-gray-800 rounded-lg overflow-hidden group transition-all md:cursor-move ${
+                    draggedPhoto === index ? 'scale-105 opacity-70 z-30' : ''
+                  }`}
                   draggable
                   onDragStart={() => handlePhotoDragStart(index)}
                   onDragOver={(e) => handlePhotoDragOver(e, index)}
                   onDragEnd={() => setDraggedPhoto(null)}
+                  data-photo-index={index}
                 >
                   <img
                     src={photo}
                     alt={`Photo ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  {/* Drag overlay - only visible on desktop hover */}
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <GripVertical className="w-4 h-4 text-white" />
                   </div>
                   <button
-                    onClick={() => removePhoto(index)}
-                    className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      removePhoto(index)
+                    }}
+                    className="absolute top-1 right-1 z-20 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                     aria-label={`Remove photo ${index + 1}`}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3 h-3 text-white" />
                   </button>
                 </div>
               ))}
