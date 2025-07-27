@@ -73,9 +73,9 @@ export default function LikesPage() {
             <div className="text-5xl mb-4">💔</div>
             <div className="text-lg text-white mb-2 font-mono">Nobody has liked you yet!</div>
             <div className="text-[#00FFAB] mb-4 font-mono text-center">Keep swiping - someone will notice you soon!</div>
-            <button className="px-4 py-2 bg-[#00FFAB] text-[#030712] rounded-full opacity-50 cursor-not-allowed font-mono" disabled>
+            {/* <button className="px-4 py-2 bg-[#00FFAB] text-[#030712] rounded-full opacity-50 cursor-not-allowed font-mono" disabled>
               Refresh
-            </button>
+            </button> */}
           </div>
         ) : (
           <div className="border-2 border-dashed border-[#00FFAB]/30 rounded-xl p-4">

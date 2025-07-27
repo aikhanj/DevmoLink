@@ -172,7 +172,7 @@ export default function ChatsPage() {
              <div className="text-5xl mb-4">🎉</div>
              <div className="text-lg text-white mb-2 font-mono">You&apos;re all caught up!</div>
              <div className="text-[#00FFAB] mb-4 font-mono">We&apos;ll ping you when new hackers join.</div>
-             <button 
+             {/* <button 
                onClick={() => {
                  // Clear any phantom localStorage data and refresh
                  if (typeof window !== "undefined") {
@@ -183,7 +183,7 @@ export default function ChatsPage() {
                className="px-4 py-2 bg-[#00FFAB] text-[#030712] rounded-full font-mono hover:scale-105 transition-transform"
              >
                🧹 Clear & Refresh
-             </button>
+             </button> */}
            </div>
         ) : (
           chats.map((chat) => (
