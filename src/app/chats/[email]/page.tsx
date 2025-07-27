@@ -78,10 +78,17 @@ export default function ChatThreadPage() {
         const snap = await getDoc(matchDocRef);
         if (snap.exists()) {
           const data = snap.data() as { salt?: string } | undefined;
-          if (data?.salt) setChatSalt(data.salt);
+          if (data?.salt) {
+            setChatSalt(data.salt);
+          } else {
+            setChatSalt("devmolink_salt"); // Fallback to default salt
+          }
+        } else {
+          setChatSalt("devmolink_salt"); // Fallback to default salt
         }
       } catch (err) {
         console.error("Failed to fetch chat salt", err);
+        setChatSalt("devmolink_salt"); // Fallback to default salt
       }
     })();
 
@@ -97,8 +104,11 @@ export default function ChatThreadPage() {
   async function handleSend() {
     if (!newMessage.trim() || !session?.user?.email) return;
     
+    // Ensure we have a salt before encrypting
+    const currentSalt = chatSalt || "devmolink_salt";
+    
     // Encrypt the message before sending
-    const encryptedText = encryptMessage(newMessage.trim(), session.user.email, decodedEmail, chatSalt);
+    const encryptedText = encryptMessage(newMessage.trim(), session.user.email, decodedEmail, currentSalt);
     
     const chatId = [session.user.email, decodedEmail].sort().join("_");
     const msgsRef = collection(db, "matches", chatId, "messages");
@@ -164,15 +174,21 @@ export default function ChatThreadPage() {
           // Decrypt message for display
           let displayText = msg.text;
           
+          // Ensure we have a salt before attempting decryption
+          const currentSalt = chatSalt || "devmolink_salt";
+          
           // Only try to decrypt if message is marked as encrypted OR looks encrypted
           if (msg.isEncrypted && session.user?.email) {
-            displayText = decryptMessage(msg.text, session.user.email, decodedEmail, chatSalt);
+            displayText = decryptMessage(msg.text, session.user.email, decodedEmail, currentSalt);
+            if (displayText === msg.text) {
+            }
           } else if (msg.text.length > 50 && /^[A-Za-z0-9+/]+=*$/.test(msg.text) && session.user?.email) {
             // Fallback: try to decrypt if it looks like encrypted text (base64-like)
-            const decrypted = decryptMessage(msg.text, session.user.email, decodedEmail, chatSalt);
+            const decrypted = decryptMessage(msg.text, session.user.email, decodedEmail, currentSalt);
             // Only use decrypted version if it's different and looks like real text
             if (decrypted !== msg.text && decrypted.length > 0 && !decrypted.includes('U2FsdGVk')) {
               displayText = decrypted;
+            } else {
             }
           }
           // Otherwise, show original text (unencrypted legacy messages)
