@@ -7,6 +7,7 @@ import { db, storage } from "../firebase"
 import { doc, getDoc, setDoc } from "firebase/firestore"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { getAuth } from "firebase/auth"
+import Cropper from 'react-easy-crop'
 import {
   Camera,
   X,
@@ -24,6 +25,55 @@ import { toast } from 'react-hot-toast'
 // Utility function for combining class names
 const cn = (...classes: (string | undefined | false | null)[]) => {
   return classes.filter(Boolean).join(' ')
+}
+
+// Crop helper function
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image()
+    image.addEventListener('load', () => resolve(image))
+    image.addEventListener('error', error => reject(error))
+    image.src = url
+  })
+
+async function getCroppedImg(
+  imageSrc: string,
+  pixelCrop: { x: number; y: number; width: number; height: number }
+): Promise<Blob> {
+  const image = await createImage(imageSrc)
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+
+  if (!ctx) {
+    throw new Error('No 2d context')
+  }
+
+  // Set canvas size to the cropped size
+  canvas.width = pixelCrop.width
+  canvas.height = pixelCrop.height
+
+  // Draw the cropped image
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  )
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) {
+        reject(new Error('Canvas is empty'))
+        return
+      }
+      resolve(blob)
+    }, 'image/jpeg')
+  })
 }
 
 interface FormData {
@@ -184,6 +234,12 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   const [saving, setSaving] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string>("")
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [cropImage, setCropImage] = useState<string | null>(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+  const [tempFile, setTempFile] = useState<File | null>(null)
 
   // Search and dropdown states
   const [skillsCategory, setSkillsCategory] = useState<keyof typeof SKILLS_OPTIONS>("languages")
@@ -310,24 +366,15 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   const handlePhotoUpload = (files: FileList | null) => {
     if (!files) return
 
-    const existingKeys = new Set(formData.photos.map(f => `${f.name}-${f.size}`))
-    const uniqueFiles: File[] = []
-    let hadDuplicate = false
+    const file = files[0] // Handle one file at a time for cropping
+    if (!file) return
 
-    Array.from(files).forEach(file => {
-      const key = `${file.name}-${file.size}`
-      if (existingKeys.has(key) || uniqueFiles.some(f => `${f.name}-${f.size}` === key)) {
-        hadDuplicate = true
-      } else {
-        uniqueFiles.push(file)
-      }
-    })
+    // Check if it's a duplicate before proceeding
+    const isDuplicate = formData.photos.some(existingFile => 
+      existingFile.name === file.name && existingFile.size === file.size
+    )
 
-    // Respect max 6 photos limit
-    const spaceLeft = 6 - formData.photos.length
-    const newPhotos = uniqueFiles.slice(0, spaceLeft)
-
-    if (newPhotos.length === 0) {
+    if (isDuplicate) {
       toast.error(
         'You dirty dog 😏, you can\'t use the same photo!',
         {
@@ -341,43 +388,22 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
           icon: '🐕',
         }
       )
-      // Reset file input so selecting the same file again will trigger onChange
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
       return
     }
 
-    if (hadDuplicate) {
-      toast(
-        'Some duplicate photos were ignored 🐾',
-        {
-          duration: 3000,
-          position: 'top-center',
-          style: {
-            background: '#1F2937',
-            color: '#fff',
-            border: '1px solid #374151',
-          },
-        }
-      )
+    // Create URL for the cropper
+    const reader = new FileReader()
+    reader.onload = () => {
+      setCropImage(reader.result as string)
+      setTempFile(file)
+      setCropModalOpen(true)
     }
+    reader.readAsDataURL(file)
 
-    setFormData((prev) => ({
-      ...prev,
-      photos: [...prev.photos, ...newPhotos],
-    }))
-
-    // Create previews for new files
-    newPhotos.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setPhotoPreviews(prev => [...prev, e.target?.result as string])
-      }
-      reader.readAsDataURL(file)
-    })
-
-    // Reset file input to allow re-selection of the same file(s) later
+    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -689,6 +715,52 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     setTouchedFields(prev => ({ ...prev, [field]: true }))
   }
 
+  interface CroppedArea {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+
+  const handleCropComplete = (
+    croppedArea: CroppedArea,
+    croppedAreaPixels: CroppedArea
+  ) => {
+    setCroppedAreaPixels(croppedAreaPixels)
+  }
+
+  const handleCropConfirm = async () => {
+    if (!cropImage || !croppedAreaPixels || !tempFile) return
+
+    try {
+      const croppedBlob = await getCroppedImg(cropImage, croppedAreaPixels)
+      const croppedFile = new File([croppedBlob], tempFile.name, { type: 'image/jpeg' })
+
+      // Add to formData and create preview
+      setFormData(prev => ({
+        ...prev,
+        photos: [...prev.photos, croppedFile],
+      }))
+
+      // Create preview for the cropped image
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setPhotoPreviews(prev => [...prev, e.target?.result as string])
+      }
+      reader.readAsDataURL(croppedFile)
+
+      // Close modal and reset crop state
+      setCropModalOpen(false)
+      setCropImage(null)
+      setTempFile(null)
+      setCrop({ x: 0, y: 0 })
+      setZoom(1)
+    } catch (error) {
+      console.error('Error cropping image:', error)
+      toast.error('Failed to crop image. Please try again.')
+    }
+  }
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -699,6 +771,44 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {/* Crop Modal */}
+      {cropModalOpen && cropImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="bg-gray-900 p-4 rounded-lg w-full max-w-lg">
+            <div className="relative h-[400px] mb-4">
+              <Cropper
+                image={cropImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={3/4}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={handleCropComplete}
+              />
+            </div>
+            <div className="flex justify-between gap-4">
+              <button
+                onClick={() => {
+                  setCropModalOpen(false)
+                  setCropImage(null)
+                  setTempFile(null)
+                }}
+                className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCropConfirm}
+                className="flex-1 px-4 py-2 bg-[#00FF9A] text-black rounded-lg hover:bg-[#00CC7A]"
+              >
+                Crop & Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Existing modal content */}
       <div className="w-[60vh] max-w-[90vw] max-h-[90vh] overflow-y-auto bg-[#0F0F14] rounded-lg space-y-6 px-6 py-4 scrollbar-gradient">
         {/* Header */}
         <div className="text-center mb-6 relative">

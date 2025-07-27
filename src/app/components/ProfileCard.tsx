@@ -117,7 +117,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
 
   return (
     <div
-      className="profile-card relative w-full h-[35rem] rounded-xl overflow-hidden bg-gray-900 shadow-lg will-change-transform select-none"
+      className="profile-card relative w-full aspect-[3/4] max-w-[400px] max-h-[600px] mx-auto rounded-xl overflow-hidden bg-gray-900 shadow-lg will-change-transform select-none"
       onMouseDown={(e) => handleStart(e.clientX, e.clientY, e)}
       onMouseUp={(e) => handleEnd(e.clientX, e.clientY)}
       onMouseLeave={resetState}
@@ -135,7 +135,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
           <img
             src={photos[photoIdx]}
             alt={`${name} photo ${photoIdx + 1}`}
-            className="w-full h-full min-h-[35rem] object-cover bg-gray-900"
+            className="w-full h-full object-cover bg-gray-900"
             draggable={false}
             onError={(e) => {
               console.error(`Failed to load image for ${name}:`, {
