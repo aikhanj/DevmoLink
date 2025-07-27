@@ -1,12 +1,13 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { db, storage } from "../firebase"
 import { doc, getDoc, setDoc } from "firebase/firestore"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { getAuth } from "firebase/auth"
+import Cropper from 'react-easy-crop'
 import {
   Camera,
   X,
@@ -19,10 +20,60 @@ import {
   Check,
   ChevronsUpDown,
 } from "lucide-react"
+import { toast } from 'react-hot-toast'
 
 // Utility function for combining class names
 const cn = (...classes: (string | undefined | false | null)[]) => {
   return classes.filter(Boolean).join(' ')
+}
+
+// Crop helper function
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image()
+    image.addEventListener('load', () => resolve(image))
+    image.addEventListener('error', error => reject(error))
+    image.src = url
+  })
+
+async function getCroppedImg(
+  imageSrc: string,
+  pixelCrop: { x: number; y: number; width: number; height: number }
+): Promise<Blob> {
+  const image = await createImage(imageSrc)
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+
+  if (!ctx) {
+    throw new Error('No 2d context')
+  }
+
+  // Set canvas size to the cropped size
+  canvas.width = pixelCrop.width
+  canvas.height = pixelCrop.height
+
+  // Draw the cropped image
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  )
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) {
+        reject(new Error('Canvas is empty'))
+        return
+      }
+      resolve(blob)
+    }, 'image/jpeg')
+  })
 }
 
 interface FormData {
@@ -183,6 +234,12 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   const [saving, setSaving] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string>("")
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [cropImage, setCropImage] = useState<string | null>(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+  const [tempFile, setTempFile] = useState<File | null>(null)
 
   // Search and dropdown states
   const [skillsCategory, setSkillsCategory] = useState<keyof typeof SKILLS_OPTIONS>("languages")
@@ -195,6 +252,8 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const skillsSearchRef = useRef<HTMLInputElement>(null)
   const toolsSearchRef = useRef<HTMLInputElement>(null)
+  const skillsDropdownRef = useRef<HTMLDivElement>(null)
+  const toolsDropdownRef = useRef<HTMLDivElement>(null)
 
   // Auto-detect timezone
   useEffect(() => {
@@ -273,20 +332,21 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   // Calculate progress
   const calculateProgress = () => {
     let completed = 0
-    const total = 6
+    const total = 8 // Total number of requirement groups
 
+    // Core requirements (avatar, photos, personal info)
     if (formData.avatar || avatarPreview) completed++
     if (formData.photos.length >= 3 || photoPreviews.length >= 3) completed++
     if (formData.name && formData.age && formData.timezone && formData.gender) completed++
+
+    // Professional info
     if (formData.professions.length > 0) completed++
-
-    // Count skills across all categories
-    const totalSkills = Object.values(formData.skills).flat().length
-    if (totalSkills > 0 && formData.experienceLevel) completed++
-
+    if (Object.values(formData.skills).some(arr => arr.length > 0)) completed++
+    if (formData.tools.length > 0) completed++
+    if (formData.experienceLevel) completed++
     if (formData.interests.length > 0) completed++
 
-    return Math.round((completed / total) * 100)
+    return Math.min(100, Math.round((completed / total) * 100)) // Ensure it never exceeds 100%
   }
 
   const progress = calculateProgress()
@@ -298,6 +358,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     formData.gender &&
     formData.professions.length > 0 &&
     Object.values(formData.skills).some((arr) => arr.length > 0) &&
+    formData.tools.length > 0 &&
     formData.experienceLevel &&
     formData.interests.length > 0
 
@@ -305,29 +366,63 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   const handlePhotoUpload = (files: FileList | null) => {
     if (!files) return
 
-    const newPhotos = Array.from(files).slice(0, 6 - formData.photos.length)
-    setFormData((prev) => ({
-      ...prev,
-      photos: [...prev.photos, ...newPhotos],
-    }))
+    const file = files[0] // Handle one file at a time for cropping
+    if (!file) return
 
-    // Create previews for new files
-    newPhotos.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setPhotoPreviews(prev => [...prev, e.target?.result as string])
+    // Check if it's a duplicate before proceeding
+    const isDuplicate = formData.photos.some(existingFile => 
+      existingFile.name === file.name && existingFile.size === file.size
+    )
+
+    if (isDuplicate) {
+      toast.error(
+        'You dirty dog 😏, you can\'t use the same photo!',
+        {
+          duration: 3000,
+          position: 'top-center',
+          style: {
+            background: '#1F2937',
+            color: '#fff',
+            border: '1px solid #374151',
+          },
+          icon: '🐕',
+        }
+      )
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
       }
-      reader.readAsDataURL(file)
-    })
+      return
+    }
+
+    // Create URL for the cropper
+    const reader = new FileReader()
+    reader.onload = () => {
+      setCropImage(reader.result as string)
+      setTempFile(file)
+      setCropModalOpen(true)
+    }
+    reader.readAsDataURL(file)
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   // Remove photo
   const removePhoto = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      photos: prev.photos.filter((_, i) => i !== index),
-    }))
+    // Always remove preview at this index
     setPhotoPreviews(prev => prev.filter((_, i) => i !== index))
+
+    // Determine if this index corresponds to a local File in formData.photos
+    const remoteCount = photoPreviews.length - formData.photos.length
+    if (index >= remoteCount) {
+      const fileIndex = index - remoteCount
+      setFormData((prev) => ({
+        ...prev,
+        photos: prev.photos.filter((_, i) => i !== fileIndex),
+      }))
+    }
   }
 
   // Drag and drop for photos
@@ -339,22 +434,17 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     e.preventDefault()
     if (draggedPhoto === null || draggedPhoto === index) return
 
-    const newPhotos = [...formData.photos]
+    // Simple array reorder - just move what the user sees
     const newPreviews = [...photoPreviews]
-    
-    if (draggedPhoto < newPhotos.length && index < newPhotos.length) {
-      const draggedItem = newPhotos[draggedPhoto]
-      newPhotos.splice(draggedPhoto, 1)
-      newPhotos.splice(index, 0, draggedItem)
-      setFormData((prev) => ({ ...prev, photos: newPhotos }))
-    }
-    
-    const draggedPreview = newPreviews[draggedPhoto]
+    const draggedItem = newPreviews[draggedPhoto]
     newPreviews.splice(draggedPhoto, 1)
-    newPreviews.splice(index, 0, draggedPreview)
+    newPreviews.splice(index, 0, draggedItem)
     setPhotoPreviews(newPreviews)
+    
     setDraggedPhoto(index)
   }
+
+  // Touch-based drag for mobile - REMOVED
 
   const handleAvatarUpload = (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -546,6 +636,126 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     return Object.values(formData.skills).reduce((total, skills) => total + skills.length, 0)
   }
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (skillsDropdownRef.current && !skillsDropdownRef.current.contains(event.target as Node)) {
+        setShowSkillsDropdown(false)
+      }
+      if (toolsDropdownRef.current && !toolsDropdownRef.current.contains(event.target as Node)) {
+        setShowToolsDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Add validation states
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({
+    name: false,
+    age: false,
+    gender: false,
+    professions: false,
+    skills: false,
+    tools: false,
+    experienceLevel: false,
+    interests: false,
+  })
+
+  // Validation helper functions
+  const getFieldError = (field: string) => {
+    if (!touchedFields[field]) return null
+    
+    switch (field) {
+      case 'name':
+        if (!formData.name) return 'Name is required'
+        if (formData.name.length > 30) return 'Name must be 30 characters or less'
+        return null
+      case 'age':
+        return formData.age === 0 ? 'Age is required' : null
+      case 'gender':
+        return !formData.gender ? 'Gender is required' : null
+      case 'professions':
+        return formData.professions.length === 0 ? 'Select at least one profession' : null
+      case 'skills':
+        return Object.values(formData.skills).every(arr => arr.length === 0) ? 'Select at least one skill' : null
+      case 'tools':
+        return formData.tools.length === 0 ? 'Select at least one tool' : null
+      case 'experienceLevel':
+        return !formData.experienceLevel ? 'Experience level is required' : null
+      case 'interests':
+        return formData.interests.length === 0 ? 'Select at least one interest' : null
+      default:
+        return null
+    }
+  }
+
+  // Function to get all missing fields
+  const getMissingFields = () => {
+    const missing = []
+    if (!formData.name) missing.push('Name')
+    if (formData.age === 0) missing.push('Age')
+    if (!formData.gender) missing.push('Gender')
+    if (formData.professions.length === 0) missing.push('Professions')
+    if (Object.values(formData.skills).every(arr => arr.length === 0)) missing.push('Skills')
+    if (formData.tools.length === 0) missing.push('Tools')
+    if (!formData.experienceLevel) missing.push('Experience Level')
+    if (formData.interests.length === 0) missing.push('Interests')
+    return missing
+  }
+
+  const handleBlur = (field: string) => {
+    setTouchedFields(prev => ({ ...prev, [field]: true }))
+  }
+
+  interface CroppedArea {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+
+  const handleCropComplete = (
+    croppedArea: CroppedArea,
+    croppedAreaPixels: CroppedArea
+  ) => {
+    setCroppedAreaPixels(croppedAreaPixels)
+  }
+
+  const handleCropConfirm = async () => {
+    if (!cropImage || !croppedAreaPixels || !tempFile) return
+
+    try {
+      const croppedBlob = await getCroppedImg(cropImage, croppedAreaPixels)
+      const croppedFile = new File([croppedBlob], tempFile.name, { type: 'image/jpeg' })
+
+      // Add to formData and create preview
+      setFormData(prev => ({
+        ...prev,
+        photos: [...prev.photos, croppedFile],
+      }))
+
+      // Create preview for the cropped image
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setPhotoPreviews(prev => [...prev, e.target?.result as string])
+      }
+      reader.readAsDataURL(croppedFile)
+
+      // Close modal and reset crop state
+      setCropModalOpen(false)
+      setCropImage(null)
+      setTempFile(null)
+      setCrop({ x: 0, y: 0 })
+      setZoom(1)
+    } catch (error) {
+      console.error('Error cropping image:', error)
+      toast.error('Failed to crop image. Please try again.')
+    }
+  }
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -556,6 +766,44 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {/* Crop Modal */}
+      {cropModalOpen && cropImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="bg-gray-900 p-4 rounded-lg w-full max-w-lg">
+            <div className="relative h-[400px] mb-4">
+              <Cropper
+                image={cropImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={3/4}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={handleCropComplete}
+              />
+            </div>
+            <div className="flex justify-between gap-4">
+              <button
+                onClick={() => {
+                  setCropModalOpen(false)
+                  setCropImage(null)
+                  setTempFile(null)
+                }}
+                className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCropConfirm}
+                className="flex-1 px-4 py-2 bg-[#00FF9A] text-black rounded-lg hover:bg-[#00CC7A]"
+              >
+                Crop & Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Existing modal content */}
       <div className="w-[60vh] max-w-[90vw] max-h-[90vh] overflow-y-auto bg-[#0F0F14] rounded-lg space-y-6 px-6 py-4 scrollbar-gradient">
         {/* Header */}
         <div className="text-center mb-6 relative">
@@ -641,26 +889,32 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
               {photoPreviews.map((photo, index) => (
                 <div
                   key={index}
-                  className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden group cursor-move"
+                  className={`relative aspect-square bg-gray-800 rounded-lg overflow-hidden group transition-all md:cursor-move ${
+                    draggedPhoto === index ? 'scale-105 opacity-70 z-30' : ''
+                  }`}
                   draggable
                   onDragStart={() => handlePhotoDragStart(index)}
                   onDragOver={(e) => handlePhotoDragOver(e, index)}
                   onDragEnd={() => setDraggedPhoto(null)}
+                  data-photo-index={index}
                 >
                   <img
                     src={photo}
                     alt={`Photo ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  {/* Drag overlay - only visible on desktop hover */}
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <GripVertical className="w-4 h-4 text-white" />
                   </div>
                   <button
-                    onClick={() => removePhoto(index)}
-                    className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      removePhoto(index)
+                    }}
+                    className="absolute top-1 right-1 z-20 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                     aria-label={`Remove photo ${index + 1}`}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3 h-3 text-white" />
                   </button>
                 </div>
               ))}
@@ -696,39 +950,54 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
             <h3 className="text-lg font-medium">🕛 Core details</h3>
 
             <div className="space-y-2">
-              <label htmlFor="name" className="block text-sm font-medium text-gray-300">Name</label>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-300">
+                Name <span className="text-red-500">*</span>
+              </label>
               <input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent"
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value.slice(0, 30) }))}
+                onBlur={() => handleBlur('name')}
+                className={cn(
+                  "w-full px-3 py-2 bg-gray-800 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent",
+                  getFieldError('name') ? "border-red-500" : "border-gray-700"
+                )}
                 placeholder="Your full name"
                 aria-label="Full name"
+                maxLength={30}
               />
+              {getFieldError('name') && (
+                <p className="text-sm text-red-500 mt-1">{getFieldError('name')}</p>
+              )}
             </div>
 
+            {/* Age Section */}
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-300">Age: {formData.age}</label>
-              <div className="px-2">
+              <label className="block text-sm font-medium text-gray-300">
+                Age: {formData.age} <span className="text-red-500">*</span>
+              </label>
+              <div className={cn(
+                "px-2",
+                touchedFields.age && formData.age === 0 && "border border-red-500 rounded-lg p-2"
+              )}>
                 <input
                   type="range"
                   value={formData.age}
                   onChange={(e) => setFormData((prev) => ({ ...prev, age: parseInt(e.target.value) }))}
-                  max={65}
-                  min={16}
+                  onBlur={() => handleBlur('age')}
+                  max={100}
+                  min={0}
                   step={1}
                   className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
                   aria-label="Select your age"
                 />
                 <div className="flex justify-between text-xs text-gray-400 mt-1">
-                  <span>16</span>
-                  <span>25</span>
-                  <span>35</span>
-                  <span>45</span>
-                  <span>55</span>
-                  <span>65+</span>
+                  
                 </div>
               </div>
+              {getFieldError('age') && (
+                <p className="text-sm text-red-500 mt-1">{getFieldError('age')}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -751,8 +1020,15 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-300">Gender</label>
-              <div className="grid grid-cols-2 gap-2">
+              <label className="block text-sm font-medium text-gray-300">
+                Gender <span className="text-red-500">*</span>
+              </label>
+              <div 
+                className={cn(
+                  "grid grid-cols-2 gap-2",
+                  touchedFields.gender && !formData.gender && "border border-red-500 rounded-lg p-1"
+                )}
+              >
                 {["Male", "Female", "Non-binary", "Other"].map((option) => (
                   <label
                     key={option}
@@ -768,24 +1044,37 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                       name="gender"
                       value={option}
                       checked={formData.gender === option}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, gender: e.target.value }))}
+                      onChange={(e) => {
+                        setFormData((prev) => ({ ...prev, gender: e.target.value }))
+                        handleBlur('gender')
+                      }}
                       className="sr-only"
                     />
                     <span className="text-sm font-medium">{option}</span>
                   </label>
                 ))}
               </div>
+              {getFieldError('gender') && (
+                <p className="text-sm text-red-500 mt-1">{getFieldError('gender')}</p>
+              )}
             </div>
           </div>
 
           {/* Profession / Role Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">✅ Profession / Role</h3>
+              <h3 className="text-lg font-medium">
+                Professions <span className="text-red-500">*</span>
+              </h3>
               <span className="text-xs text-gray-400">{formData.professions.length}/3 selected</span>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div 
+              className={cn(
+                "flex flex-wrap gap-2",
+                touchedFields.professions && formData.professions.length === 0 && "border border-red-500 rounded-lg p-2"
+              )}
+            >
               {PROFESSION_OPTIONS.map((profession) => (
                 <button
                   key={profession}
@@ -806,6 +1095,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
               ))}
             </div>
 
+            {getFieldError('professions') && (
+              <p className="text-sm text-red-500">{getFieldError('professions')}</p>
+            )}
             {formData.professions.length === 0 && (
               <p className="text-xs text-gray-400">Select up to 3 roles that best describe you</p>
             )}
@@ -814,7 +1106,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
           {/* Skills / Technologies Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">🧠 Skills / Technologies</h3>
+              <h3 className="text-lg font-medium">
+                Skills <span className="text-red-500">*</span>
+              </h3>
               <span className="text-xs text-gray-400">{getTotalSkillsCount()} selected</span>
             </div>
 
@@ -842,7 +1136,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
             </div>
 
             {/* Search input */}
-            <div className="relative">
+            <div className="relative" ref={skillsDropdownRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -863,7 +1157,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
 
               {/* Dropdown */}
               {showSkillsDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg max-h-48 overflow-y-auto z-10">
+                <div
+                  className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg max-h-48 overflow-y-auto z-10"
+                >
                   {filteredSkills.length > 0 ? (
                     filteredSkills.map((skill) => (
                       <button
@@ -908,17 +1204,22 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                 )),
               )}
             </div>
+            {getFieldError('skills') && (
+              <p className="text-sm text-red-500">{getFieldError('skills')}</p>
+            )}
           </div>
 
           {/* Tools / Platforms Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">🧰 Tools / Platforms</h3>
+              <h3 className="text-lg font-medium">
+                Tools <span className="text-red-500">*</span>
+              </h3>
               <span className="text-xs text-gray-400">{formData.tools.length} selected</span>
             </div>
 
             {/* Search input */}
-            <div className="relative">
+            <div className="relative" ref={toolsDropdownRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -926,7 +1227,11 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                   value={toolsSearchTerm}
                   onChange={(e) => setToolsSearchTerm(e.target.value)}
                   onFocus={() => setShowToolsDropdown(true)}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent pl-10 pr-10"
+                  onBlur={() => handleBlur('tools')}
+                  className={cn(
+                    "w-full px-3 py-2 bg-gray-800 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent pl-10 pr-10",
+                    touchedFields.tools && formData.tools.length === 0 ? "border-red-500" : "border-gray-700"
+                  )}
                   placeholder="Search tools..."
                 />
                 <button
@@ -939,7 +1244,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
 
               {/* Dropdown */}
               {showToolsDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg max-h-48 overflow-y-auto z-10">
+                <div
+                  className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg max-h-48 overflow-y-auto z-10"
+                >
                   {filteredTools.length > 0 ? (
                     filteredTools.map((tool) => (
                       <button
@@ -980,13 +1287,23 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                 </span>
               ))}
             </div>
+            {getFieldError('tools') && (
+              <p className="text-sm text-red-500">{getFieldError('tools')}</p>
+            )}
           </div>
 
           {/* Experience Level Section */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">💻 Experience Level</h3>
+            <h3 className="text-lg font-medium">
+              Experience <span className="text-red-500">*</span>
+            </h3>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div 
+              className={cn(
+                "grid grid-cols-2 gap-2",
+                touchedFields.experienceLevel && !formData.experienceLevel && "border border-red-500 rounded-lg p-1"
+              )}
+            >
               {EXPERIENCE_LEVELS.map((level) => (
                 <label
                   key={level}
@@ -1003,22 +1320,33 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                     value={level}
                     checked={formData.experienceLevel === level}
                     onChange={(e) => setFormData((prev) => ({ ...prev, experienceLevel: e.target.value }))}
+                    onBlur={() => handleBlur('experienceLevel')}
                     className="sr-only"
                   />
                   <span className="text-sm font-medium">{level}</span>
                 </label>
               ))}
             </div>
+            {getFieldError('experienceLevel') && (
+              <p className="text-sm text-red-500">{getFieldError('experienceLevel')}</p>
+            )}
           </div>
 
           {/* Looking For / Interests Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">🚀 Looking For / Interests</h3>
+              <h3 className="text-lg font-medium">
+                Interests <span className="text-red-500">*</span>
+              </h3>
               <span className="text-xs text-gray-400">{formData.interests.length} selected</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div 
+              className={cn(
+                "grid grid-cols-2 gap-2",
+                touchedFields.interests && formData.interests.length === 0 && "border border-red-500 rounded-lg p-1"
+              )}
+            >
               {INTEREST_OPTIONS.map((interest) => (
                 <button
                   key={interest}
@@ -1036,6 +1364,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                 </button>
               ))}
             </div>
+            {getFieldError('interests') && (
+              <p className="text-sm text-red-500">{getFieldError('interests')}</p>
+            )}
           </div>
 
           {/* Optional Description */}
@@ -1074,6 +1405,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                         id="github"
                         value={formData.github}
                         onChange={(e) => setFormData((prev) => ({ ...prev, github: e.target.value }))}
+                        onBlur={() => handleBlur('github')}
                         className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent"
                         placeholder="username"
                         aria-label="GitHub username"
@@ -1089,6 +1421,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                         id="linkedin"
                         value={formData.linkedin}
                         onChange={(e) => setFormData((prev) => ({ ...prev, linkedin: e.target.value }))}
+                        onBlur={() => handleBlur('linkedin')}
                         className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent"
                         placeholder="username"
                         aria-label="LinkedIn username"
@@ -1099,6 +1432,18 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
               </div>
             )}
           </div>
+
+          {/* Missing Fields Summary - Add this before the Save CTA */}
+          {getMissingFields().length > 0 && (
+            <div className="space-y-2 border border-red-500/20 rounded-lg p-4 bg-red-500/5">
+              <h4 className="text-sm font-medium text-red-400">Required Fields Missing:</h4>
+              <ul className="list-disc list-inside text-sm text-red-400/80 space-y-1">
+                {getMissingFields().map(field => (
+                  <li key={field}>{field}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Save CTA */}
           <div className="pt-4">
