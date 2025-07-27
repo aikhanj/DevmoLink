@@ -2,6 +2,7 @@
 import React from "react";
 import { SessionProvider } from "next-auth/react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { Toaster } from 'react-hot-toast';
 
 function EmailVerificationWatcher() {
   React.useEffect(() => {
@@ -24,6 +25,7 @@ export default function ClientProviders({
   return (
     <SessionProvider>
       <EmailVerificationWatcher />
+      <Toaster />
       {children}
     </SessionProvider>
   );

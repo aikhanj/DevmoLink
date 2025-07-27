@@ -19,6 +19,7 @@ import {
   Check,
   ChevronsUpDown,
 } from "lucide-react"
+import { toast } from 'react-hot-toast'
 
 // Utility function for combining class names
 const cn = (...classes: (string | undefined | false | null)[]) => {
@@ -305,7 +306,59 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   const handlePhotoUpload = (files: FileList | null) => {
     if (!files) return
 
-    const newPhotos = Array.from(files).slice(0, 6 - formData.photos.length)
+    const existingKeys = new Set(formData.photos.map(f => `${f.name}-${f.size}`))
+    const uniqueFiles: File[] = []
+    let hadDuplicate = false
+
+    Array.from(files).forEach(file => {
+      const key = `${file.name}-${file.size}`
+      if (existingKeys.has(key) || uniqueFiles.some(f => `${f.name}-${f.size}` === key)) {
+        hadDuplicate = true
+      } else {
+        uniqueFiles.push(file)
+      }
+    })
+
+    // Respect max 6 photos limit
+    const spaceLeft = 6 - formData.photos.length
+    const newPhotos = uniqueFiles.slice(0, spaceLeft)
+
+    if (newPhotos.length === 0) {
+      toast.error(
+        'You dirty dog 😏, you can\'t use the same photo!',
+        {
+          duration: 3000,
+          position: 'top-center',
+          style: {
+            background: '#1F2937',
+            color: '#fff',
+            border: '1px solid #374151',
+          },
+          icon: '🐕',
+        }
+      )
+      // Reset file input so selecting the same file again will trigger onChange
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
+    if (hadDuplicate) {
+      toast(
+        'Some duplicate photos were ignored 🐾',
+        {
+          duration: 3000,
+          position: 'top-center',
+          style: {
+            background: '#1F2937',
+            color: '#fff',
+            border: '1px solid #374151',
+          },
+        }
+      )
+    }
+
     setFormData((prev) => ({
       ...prev,
       photos: [...prev.photos, ...newPhotos],
@@ -319,6 +372,11 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
       }
       reader.readAsDataURL(file)
     })
+
+    // Reset file input to allow re-selection of the same file(s) later
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   // Remove photo
