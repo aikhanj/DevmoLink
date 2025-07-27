@@ -276,20 +276,21 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   // Calculate progress
   const calculateProgress = () => {
     let completed = 0
-    const total = 6
+    const total = 8 // Total number of requirement groups
 
+    // Core requirements (avatar, photos, personal info)
     if (formData.avatar || avatarPreview) completed++
     if (formData.photos.length >= 3 || photoPreviews.length >= 3) completed++
     if (formData.name && formData.age && formData.timezone && formData.gender) completed++
+
+    // Professional info
     if (formData.professions.length > 0) completed++
-
-    // Count skills across all categories
-    const totalSkills = Object.values(formData.skills).flat().length
-    if (totalSkills > 0 && formData.experienceLevel) completed++
-
+    if (Object.values(formData.skills).some(arr => arr.length > 0)) completed++
+    if (formData.tools.length > 0) completed++
+    if (formData.experienceLevel) completed++
     if (formData.interests.length > 0) completed++
 
-    return Math.round((completed / total) * 100)
+    return Math.min(100, Math.round((completed / total) * 100)) // Ensure it never exceeds 100%
   }
 
   const progress = calculateProgress()
@@ -301,6 +302,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     formData.gender &&
     formData.professions.length > 0 &&
     Object.values(formData.skills).some((arr) => arr.length > 0) &&
+    formData.tools.length > 0 &&
     formData.experienceLevel &&
     formData.interests.length > 0
 
@@ -622,6 +624,62 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     }
   }, [])
 
+  // Add validation states
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({
+    name: false,
+    age: false,
+    gender: false,
+    professions: false,
+    skills: false,
+    tools: false,
+    experienceLevel: false,
+    interests: false,
+  })
+
+  // Validation helper functions
+  const getFieldError = (field: string) => {
+    if (!touchedFields[field]) return null
+    
+    switch (field) {
+      case 'name':
+        return !formData.name ? 'Name is required' : null
+      case 'age':
+        return formData.age === 0 ? 'Age is required' : null
+      case 'gender':
+        return !formData.gender ? 'Gender is required' : null
+      case 'professions':
+        return formData.professions.length === 0 ? 'Select at least one profession' : null
+      case 'skills':
+        return Object.values(formData.skills).every(arr => arr.length === 0) ? 'Select at least one skill' : null
+      case 'tools':
+        return formData.tools.length === 0 ? 'Select at least one tool' : null
+      case 'experienceLevel':
+        return !formData.experienceLevel ? 'Experience level is required' : null
+      case 'interests':
+        return formData.interests.length === 0 ? 'Select at least one interest' : null
+      default:
+        return null
+    }
+  }
+
+  // Function to get all missing fields
+  const getMissingFields = () => {
+    const missing = []
+    if (!formData.name) missing.push('Name')
+    if (formData.age === 0) missing.push('Age')
+    if (!formData.gender) missing.push('Gender')
+    if (formData.professions.length === 0) missing.push('Professions')
+    if (Object.values(formData.skills).every(arr => arr.length === 0)) missing.push('Skills')
+    if (formData.tools.length === 0) missing.push('Tools')
+    if (!formData.experienceLevel) missing.push('Experience Level')
+    if (formData.interests.length === 0) missing.push('Interests')
+    return missing
+  }
+
+  const handleBlur = (field: string) => {
+    setTouchedFields(prev => ({ ...prev, [field]: true }))
+  }
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -772,24 +830,40 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
             <h3 className="text-lg font-medium">🕛 Core details</h3>
 
             <div className="space-y-2">
-              <label htmlFor="name" className="block text-sm font-medium text-gray-300">Name</label>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-300">
+                Name <span className="text-red-500">*</span>
+              </label>
               <input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent"
+                onBlur={() => handleBlur('name')}
+                className={cn(
+                  "w-full px-3 py-2 bg-gray-800 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent",
+                  getFieldError('name') ? "border-red-500" : "border-gray-700"
+                )}
                 placeholder="Your full name"
                 aria-label="Full name"
               />
+              {getFieldError('name') && (
+                <p className="text-sm text-red-500 mt-1">{getFieldError('name')}</p>
+              )}
             </div>
 
+            {/* Age Section */}
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-300">Age: {formData.age}</label>
-              <div className="px-2">
+              <label className="block text-sm font-medium text-gray-300">
+                Age: {formData.age} <span className="text-red-500">*</span>
+              </label>
+              <div className={cn(
+                "px-2",
+                touchedFields.age && formData.age === 0 && "border border-red-500 rounded-lg p-2"
+              )}>
                 <input
                   type="range"
                   value={formData.age}
                   onChange={(e) => setFormData((prev) => ({ ...prev, age: parseInt(e.target.value) }))}
+                  onBlur={() => handleBlur('age')}
                   max={100}
                   min={0}
                   step={1}
@@ -800,6 +874,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                   
                 </div>
               </div>
+              {getFieldError('age') && (
+                <p className="text-sm text-red-500 mt-1">{getFieldError('age')}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -822,8 +899,15 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-300">Gender</label>
-              <div className="grid grid-cols-2 gap-2">
+              <label className="block text-sm font-medium text-gray-300">
+                Gender <span className="text-red-500">*</span>
+              </label>
+              <div 
+                className={cn(
+                  "grid grid-cols-2 gap-2",
+                  touchedFields.gender && !formData.gender && "border border-red-500 rounded-lg p-1"
+                )}
+              >
                 {["Male", "Female", "Non-binary", "Other"].map((option) => (
                   <label
                     key={option}
@@ -839,24 +923,37 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                       name="gender"
                       value={option}
                       checked={formData.gender === option}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, gender: e.target.value }))}
+                      onChange={(e) => {
+                        setFormData((prev) => ({ ...prev, gender: e.target.value }))
+                        handleBlur('gender')
+                      }}
                       className="sr-only"
                     />
                     <span className="text-sm font-medium">{option}</span>
                   </label>
                 ))}
               </div>
+              {getFieldError('gender') && (
+                <p className="text-sm text-red-500 mt-1">{getFieldError('gender')}</p>
+              )}
             </div>
           </div>
 
           {/* Profession / Role Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">✅ Profession / Role</h3>
+              <h3 className="text-lg font-medium">
+                Professions <span className="text-red-500">*</span>
+              </h3>
               <span className="text-xs text-gray-400">{formData.professions.length}/3 selected</span>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div 
+              className={cn(
+                "flex flex-wrap gap-2",
+                touchedFields.professions && formData.professions.length === 0 && "border border-red-500 rounded-lg p-2"
+              )}
+            >
               {PROFESSION_OPTIONS.map((profession) => (
                 <button
                   key={profession}
@@ -877,6 +974,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
               ))}
             </div>
 
+            {getFieldError('professions') && (
+              <p className="text-sm text-red-500">{getFieldError('professions')}</p>
+            )}
             {formData.professions.length === 0 && (
               <p className="text-xs text-gray-400">Select up to 3 roles that best describe you</p>
             )}
@@ -885,7 +985,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
           {/* Skills / Technologies Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">🧠 Skills / Technologies</h3>
+              <h3 className="text-lg font-medium">
+                Skills <span className="text-red-500">*</span>
+              </h3>
               <span className="text-xs text-gray-400">{getTotalSkillsCount()} selected</span>
             </div>
 
@@ -981,12 +1083,17 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                 )),
               )}
             </div>
+            {getFieldError('skills') && (
+              <p className="text-sm text-red-500">{getFieldError('skills')}</p>
+            )}
           </div>
 
           {/* Tools / Platforms Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">🧰 Tools / Platforms</h3>
+              <h3 className="text-lg font-medium">
+                Tools <span className="text-red-500">*</span>
+              </h3>
               <span className="text-xs text-gray-400">{formData.tools.length} selected</span>
             </div>
 
@@ -999,7 +1106,11 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                   value={toolsSearchTerm}
                   onChange={(e) => setToolsSearchTerm(e.target.value)}
                   onFocus={() => setShowToolsDropdown(true)}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent pl-10 pr-10"
+                  onBlur={() => handleBlur('tools')}
+                  className={cn(
+                    "w-full px-3 py-2 bg-gray-800 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent pl-10 pr-10",
+                    touchedFields.tools && formData.tools.length === 0 ? "border-red-500" : "border-gray-700"
+                  )}
                   placeholder="Search tools..."
                 />
                 <button
@@ -1055,13 +1166,23 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                 </span>
               ))}
             </div>
+            {getFieldError('tools') && (
+              <p className="text-sm text-red-500">{getFieldError('tools')}</p>
+            )}
           </div>
 
           {/* Experience Level Section */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">💻 Experience Level</h3>
+            <h3 className="text-lg font-medium">
+              Experience <span className="text-red-500">*</span>
+            </h3>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div 
+              className={cn(
+                "grid grid-cols-2 gap-2",
+                touchedFields.experienceLevel && !formData.experienceLevel && "border border-red-500 rounded-lg p-1"
+              )}
+            >
               {EXPERIENCE_LEVELS.map((level) => (
                 <label
                   key={level}
@@ -1078,22 +1199,33 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                     value={level}
                     checked={formData.experienceLevel === level}
                     onChange={(e) => setFormData((prev) => ({ ...prev, experienceLevel: e.target.value }))}
+                    onBlur={() => handleBlur('experienceLevel')}
                     className="sr-only"
                   />
                   <span className="text-sm font-medium">{level}</span>
                 </label>
               ))}
             </div>
+            {getFieldError('experienceLevel') && (
+              <p className="text-sm text-red-500">{getFieldError('experienceLevel')}</p>
+            )}
           </div>
 
           {/* Looking For / Interests Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">🚀 Looking For / Interests</h3>
+              <h3 className="text-lg font-medium">
+                Interests <span className="text-red-500">*</span>
+              </h3>
               <span className="text-xs text-gray-400">{formData.interests.length} selected</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div 
+              className={cn(
+                "grid grid-cols-2 gap-2",
+                touchedFields.interests && formData.interests.length === 0 && "border border-red-500 rounded-lg p-1"
+              )}
+            >
               {INTEREST_OPTIONS.map((interest) => (
                 <button
                   key={interest}
@@ -1111,6 +1243,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                 </button>
               ))}
             </div>
+            {getFieldError('interests') && (
+              <p className="text-sm text-red-500">{getFieldError('interests')}</p>
+            )}
           </div>
 
           {/* Optional Description */}
@@ -1149,6 +1284,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                         id="github"
                         value={formData.github}
                         onChange={(e) => setFormData((prev) => ({ ...prev, github: e.target.value }))}
+                        onBlur={() => handleBlur('github')}
                         className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent"
                         placeholder="username"
                         aria-label="GitHub username"
@@ -1164,6 +1300,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                         id="linkedin"
                         value={formData.linkedin}
                         onChange={(e) => setFormData((prev) => ({ ...prev, linkedin: e.target.value }))}
+                        onBlur={() => handleBlur('linkedin')}
                         className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent"
                         placeholder="username"
                         aria-label="LinkedIn username"
@@ -1174,6 +1311,18 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
               </div>
             )}
           </div>
+
+          {/* Missing Fields Summary - Add this before the Save CTA */}
+          {getMissingFields().length > 0 && (
+            <div className="space-y-2 border border-red-500/20 rounded-lg p-4 bg-red-500/5">
+              <h4 className="text-sm font-medium text-red-400">Required Fields Missing:</h4>
+              <ul className="list-disc list-inside text-sm text-red-400/80 space-y-1">
+                {getMissingFields().map(field => (
+                  <li key={field}>{field}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Save CTA */}
           <div className="pt-4">
