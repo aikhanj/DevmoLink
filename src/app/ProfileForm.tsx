@@ -772,19 +772,14 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                   type="range"
                   value={formData.age}
                   onChange={(e) => setFormData((prev) => ({ ...prev, age: parseInt(e.target.value) }))}
-                  max={65}
-                  min={16}
+                  max={100}
+                  min={0}
                   step={1}
                   className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
                   aria-label="Select your age"
                 />
                 <div className="flex justify-between text-xs text-gray-400 mt-1">
-                  <span>16</span>
-                  <span>25</span>
-                  <span>35</span>
-                  <span>45</span>
-                  <span>55</span>
-                  <span>65+</span>
+                  
                 </div>
               </div>
             </div>
