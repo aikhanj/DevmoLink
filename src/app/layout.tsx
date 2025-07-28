@@ -15,6 +15,28 @@ export const metadata: Metadata = {
   description: 'Connect with other developers. Whether for a job, a project, a relationship, devmolink is the place to be. Stop calling us the Tinder for developers.',
   icons: {
     icon: '/devmolinkGreenLogo.svg'
+  },
+  // Farcaster Frame metadata
+  other: {
+    'fc:frame': JSON.stringify({
+      version: 'next',
+      image: 'https://devmolink.com/icon.png',
+      buttons: [
+        {
+          label: 'Open DevmoLink',
+          action: 'link',
+          target: 'https://devmolink.com'
+        }
+      ]
+    }),
+    'fc:frame:image': 'https://devmolink.com/icon.png',
+    'fc:frame:image:aspect_ratio': '1.91:1',
+    'fc:frame:button:1': 'Open DevmoLink',
+    'fc:frame:button:1:action': 'link',
+    'fc:frame:button:1:target': 'https://devmolink.com',
+    'og:image': 'https://devmolink.com/icon.png',
+    'twitter:card': 'summary_large_image',
+    'twitter:image': 'https://devmolink.com/icon.png'
   }
 };
 

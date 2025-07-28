@@ -9,6 +9,7 @@ import { useTheme } from "next-themes";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import TopNav from "./components/TopNav";
+import { MiniAppWrapper } from "../components/MiniAppWrapper";
 
 const navItems = [
   { href: "/", label: "Home", icon: Flame },
@@ -59,7 +60,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <LoadingContext.Provider value={{ loading, setLoading }}>
-      <div className="min-h-screen grid grid-rows-[auto_1fr] bg-[#030712] dark relative">
+      <MiniAppWrapper>
+        <div className="min-h-screen grid grid-rows-[auto_1fr] bg-[#030712] dark relative">
         {/* Global SVG grid background overlay */}
         <div className="pointer-events-none fixed inset-0 z-0 opacity-10">
           <svg width="100%" height="100%" className="absolute inset-0" style={{ minHeight: '100vh' }}>
@@ -254,6 +256,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
       </div>
+      </MiniAppWrapper>
     </LoadingContext.Provider>
   );
 } 
