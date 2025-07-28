@@ -37,19 +37,35 @@ export default function ChatsPage() {
     }
          Promise.all([
       // Get matches from database ONLY
-      fetch("/api/matches").then((res) => res.json()).catch(() => []),
-      // Get all profiles for avatars
-      fetch("/api/profiles").then((res) => res.json()).catch(() => []),
-    ]).then(([matchedProfiles, allProfiles]) => {
+      fetch("/api/matches").then((res) => {
+        if (!res.ok) {
+          console.error("Failed to fetch matches:", res.status, res.statusText);
+          return [];
+        }
+        return res.json();
+      }).catch(() => []),
+      // Get profiles for matched users only
+      fetch("/api/profiles/matches").then((res) => {
+        if (!res.ok) {
+          console.error("Failed to fetch matched profiles:", res.status, res.statusText);
+          return [];
+        }
+        return res.json();
+      }).catch(() => []),
+    ]).then(([matchedProfiles, matchedUserProfiles]) => {
+      // Ensure both are arrays
+      const profiles = Array.isArray(matchedProfiles) ? matchedProfiles : [];
+      const userProfiles = Array.isArray(matchedUserProfiles) ? matchedUserProfiles : [];
+      
       // 🚨 FILTER OUT SELF AND ONLY SHOW REAL MATCHES! 🚨
       const currentUserEmail = session?.user?.email;
-      const filteredMatchedProfiles = matchedProfiles.filter((profile: ChatProfile) => 
+      const filteredMatchedProfiles = profiles.filter((profile: ChatProfile) => 
         profile.email !== currentUserEmail && profile.id !== currentUserEmail
       );
 
       // Merge matched profiles with their full profile data (including avatars)
       const enrichedMatchedProfiles = filteredMatchedProfiles.map((match: ChatProfile) => {
-        const profile = allProfiles.find((p: ChatProfile) => p.email === match.id || p.id === match.id);
+        const profile = userProfiles.find((p: ChatProfile) => p.email === match.id || p.id === match.id);
         return {
           ...match,
           name: profile?.name || match.name,
