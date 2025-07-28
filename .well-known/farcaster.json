@@ -4,7 +4,7 @@
     "payload": "eyJkb21haW4iOiJkZXZtb2xpbmsuY29tIn0",
     "signature": "MHhiMzZiZDZlMzAzOTFlNTIzMTRmNTRjNjllMmRlZDdkY2RlYmM0MzRhYTJhMzI5ZGU4ZWU4ZDYwYzY0YzAyNjg2Mjk3MDBiMDRjZTRkNjI4MzczNDIzM2MxNDZlNzczZjQ4MDZmMmI2OWM1OTEwY2MxZjU4Zjg2YmJlN2Q5NWY4YzFi"
   },
-    "miniApp": {
+    "miniapp": {
     "frame": {
       "name": "DevmoLink",
       "version": "1",
