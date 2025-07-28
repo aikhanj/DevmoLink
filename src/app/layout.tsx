@@ -16,27 +16,41 @@ export const metadata: Metadata = {
   icons: {
     icon: '/devmolinkGreenLogo.svg'
   },
-  // Farcaster Frame metadata
+  // Farcaster Mini-App Embed metadata
   other: {
-    'fc:frame': JSON.stringify({
-      version: 'next',
-      image: 'https://devmolink.com/icon.png',
-      buttons: [
-        {
-          label: 'Open DevmoLink',
-          action: 'link',
-          target: 'https://devmolink.com'
+    'fc:miniapp': JSON.stringify({
+      version: '1',
+      imageUrl: 'https://devmolink.com/screenshotDevmoLink.png',
+      button: {
+        title: 'Find Your Match',
+        action: {
+          type: 'launch_miniapp', // new name per spec (launch_frame also accepted for b-c)
+          url: 'https://devmolink.com',
+          name: 'DevmoLink',
+          splashImageUrl: 'https://devmolink.com/icon.png',
+          splashBackgroundColor: '#212122'
         }
-      ]
+      }
     }),
-    'fc:frame:image': 'https://devmolink.com/icon.png',
-    'fc:frame:image:aspect_ratio': '1.91:1',
-    'fc:frame:button:1': 'Open DevmoLink',
-    'fc:frame:button:1:action': 'link',
-    'fc:frame:button:1:target': 'https://devmolink.com',
-    'og:image': 'https://devmolink.com/icon.png',
+    // Backward-compatibility tag for older clients
+    'fc:frame': JSON.stringify({
+      version: '1',
+      imageUrl: 'https://devmolink.com/screenshotDevmoLink.png',
+      button: {
+        title: 'Find Your Match',
+        action: {
+          type: 'launch_frame',
+          url: 'https://devmolink.com',
+          name: 'DevmoLink',
+          splashImageUrl: 'https://devmolink.com/icon.png',
+          splashBackgroundColor: '#212122'
+        }
+      }
+    }),
+    // Standard social tags
+    'og:image': 'https://devmolink.com/screenshotDevmoLink.png',
     'twitter:card': 'summary_large_image',
-    'twitter:image': 'https://devmolink.com/icon.png'
+    'twitter:image': 'https://devmolink.com/screenshotDevmoLink.png'
   }
 };
 
