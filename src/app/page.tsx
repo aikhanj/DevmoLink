@@ -48,8 +48,18 @@ interface UserProfile {
 }
 
 async function fetchProfiles() {
+  try {
   const res = await fetch("/api/profiles");
-  return res.json();
+    if (!res.ok) {
+      console.error("Failed to fetch profiles:", res.status, res.statusText);
+      return []; // Return empty array on error
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : []; // Ensure we always return an array
+  } catch (error) {
+    console.error("Error fetching profiles:", error);
+    return []; // Return empty array on error
+  }
 }
 
 function useTypingEffect(text: string, speed = 30) {
@@ -979,7 +989,13 @@ export default function Home() {
           : profile.skills
       }));
       setProfiles(transformedProfiles as Profile[]);
-      fetch("/api/swipes").then(res => res.json()).then(data => setSwipedIds(data.swipedIds || []))
+      fetch("/api/swipes").then(res => {
+        if (!res.ok) {
+          console.error("Failed to fetch swipes:", res.status, res.statusText);
+          return { swipedIds: [] }; // Return empty swipedIds on error
+        }
+        return res.json();
+      }).then(data => setSwipedIds(data.swipedIds || []))
         .finally(() => {
           setLocalLoading(false);
           setLoading(false);
@@ -989,7 +1005,13 @@ export default function Home() {
       console.log('Using REAL data from API');
       fetchProfiles().then(data => {
         setProfiles(data);
-        return fetch("/api/swipes").then(res => res.json()).then(swipeData => setSwipedIds(swipeData.swipedIds || []));
+        return fetch("/api/swipes").then(res => {
+          if (!res.ok) {
+            console.error("Failed to fetch swipes:", res.status, res.statusText);
+            return { swipedIds: [] }; // Return empty swipedIds on error
+          }
+          return res.json();
+        }).then(swipeData => setSwipedIds(swipeData.swipedIds || []));
       }).finally(() => {
         setLocalLoading(false);
         setLoading(false);
@@ -998,7 +1020,7 @@ export default function Home() {
   }, []);
 
   // Filter out already-swiped profiles and self
-  const filteredProfiles = profiles.filter(
+  const filteredProfiles = (Array.isArray(profiles) ? profiles : []).filter(
     (profile) =>
       !swipedIds.includes(profile.email) &&
       profile.email !== session?.user?.email
