@@ -1,39 +1,30 @@
 {
-  "accountAssociation": {
-    "header": "eyJmaWQiOjEyMzQ1LCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4MTIzNDU2Nzg5YWJjZGVmIn0",
-    "payload": "eyJkb21haW4iOiJodWFraGFuc2Fycy5jb20ifQ==",
-    "signature": "MHg4Yzk2YjVhNmQzZTIxNDViN2Y4OWE0YzNlZmIyMTM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1"
-  },
   "frame": {
     "name": "DevmoLink",
-    "version": "1.0.0",
+    "version": "1",
     "iconUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
+    "homeUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app",
+    "imageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/screenshotDevmoLink.png",
+    "buttonTitle": "Find Your Match",
     "splashImageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
     "splashBackgroundColor": "#212122",
-    "homeUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app",
-    "imageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
-    "buttonTitle": "Find Your Match",
     "webhookUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/api/webhook",
-    "subtitle": "The Tinder for Developers",
-    "description": "Connect with other developers for jobs, projects, relationships, or hackathon teams. DevmoLink is where developers meet.",
     "primaryCategory": "social",
-    "tags": [
-      "social",
-      "networking",
-      "developers",
-      "coding",
-      "dating",
-      "hackathon",
-      "tech"
-    ],
-    "tagline": "Where Developers Connect",
-    "ogTitle": "DevmoLink - Where Developers Connect", 
-    "ogDescription": "Find developers for projects, jobs, dating, or hackathon teams. Join the premier developer networking platform.",
-    "ogImageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
-    "castShareUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
     "screenshotUrls": [
       "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/screenshotDevmoLink.png"
     ],
-    "heroImageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png"
+    "heroImageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
+    "tags": [
+      "social",
+      "messaging",
+      "community"
+    ],
+    "tagline": "Where Developers Connect",
+    "ogTitle": "DevmoLink - Developers Link",
+    "ogDescription": "Find developers for projects, jobs, dating, or hackathon teams.",
+    "ogImageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
+    "castShareUrl": "https://warpcast.com/~/compose?text=Check%20out%20DevmoLink%20-%20The%20Tinder%20for%20Developers!&embeds[]=https://devmolink.com",
+    "subtitle": "The Tinder for Developers",
+    "description": "Connect with other developers for jobs, projects, relationships, or hackathon teams. DevmoLink is where developers meet."
   }
-} 
+}
