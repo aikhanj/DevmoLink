@@ -2,18 +2,18 @@
     "frame": {
       "name": "DevmoLink",
       "version": "1",
-      "iconUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
-      "homeUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app",
-      "imageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/screenshotDevmoLink.png",
+      "iconUrl": "https://devmolink.com/icon.png",
+      "homeUrl": "https://devmolink.com",
+      "imageUrl": "https://devmolink.com/screenshotDevmoLink.png",
       "buttonTitle": "Find Your Match",
-      "splashImageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
+      "splashImageUrl": "https://devmolink.com/icon.png",
       "splashBackgroundColor": "#212122",
-      "webhookUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/api/webhook",
+      "webhookUrl": "https://devmolink.com/api/webhook",
       "primaryCategory": "social",
       "screenshotUrls": [
-        "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/screenshotDevmoLink.png"
+        "https://devmolink.com/screenshotDevmoLink.png"
       ],
-      "heroImageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
+      "heroImageUrl": "https://devmolink.com/icon.png",
       "tags": [
         "social",
         "messaging",
@@ -22,7 +22,7 @@
       "tagline": "Where Developers Connect",
       "ogTitle": "DevmoLink - Developers Link",
       "ogDescription": "Find developers for projects, jobs, dating, or hackathon teams.",
-      "ogImageUrl": "https://hack-match-git-farcaster2-aikhans-projects-1f0abbf2.vercel.app/icon.png",
+      "ogImageUrl": "https://devmolink.com/icon.png",
       "castShareUrl": "https://warpcast.com/~/compose?text=Check%20out%20DevmoLink%20-%20The%20Tinder%20for%20Developers!&embeds[]=https://devmolink.com",
       "subtitle": "The Tinder for Developers",
       "description": "Connect with other developers for jobs, projects, relationships, or hackathon teams. DevmoLink is where developers meet."
