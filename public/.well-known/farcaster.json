@@ -5,7 +5,6 @@
       "signature": "MHhiMzZiZDZlMzAzOTFlNTIzMTRmNTRjNjllMmRlZDdkY2RlYmM0MzRhYTJhMzI5ZGU4ZWU4ZDYwYzY0YzAyNjg2Mjk3MDBiMDRjZTRkNjI4MzczNDIzM2MxNDZlNzczZjQ4MDZmMmI2OWM1OTEwY2MxZjU4Zjg2YmJlN2Q5NWY4YzFi"
     },
       "miniapp": {
-      "frame": {
         "name": "DevmoLink",
         "version": "1",
         "iconUrl": "https://devmolink.com/icon.png",
@@ -33,4 +32,4 @@
         "subtitle": "The Tinder for Developers",
         "description": "Connect with other developers for jobs, projects, relationships, or hackathon teams. DevmoLink is where developers meet."
       }
-    }}
+    }
