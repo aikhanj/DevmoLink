@@ -13,9 +13,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@farcaster/frame-node": "^0.1.7",
+    "@farcaster/frame-sdk": "^0.1.8",
     "@headlessui/react": "^2.2.4",
     "@heroicons/react": "^2.2.0",
     "@react-spring/web": "^9.7.5",
+    "@tanstack/react-query": "^5.83.0",
+    "@wagmi/connectors": "^5.9.0",
+    "@wagmi/core": "^2.18.0",
     "crypto-js": "^4.2.0",
     "firebase": "^11.10.0",
     "lucide-react": "^0.525.0",
@@ -27,7 +32,9 @@
     "react-easy-crop": "^5.5.0",
     "react-hot-toast": "^2.5.2",
     "react-swipeable": "^7.0.2",
-    "react-tinder-card": "^1.6.4"
+    "react-tinder-card": "^1.6.4",
+    "viem": "^2.33.1",
+    "wagmi": "^2.16.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

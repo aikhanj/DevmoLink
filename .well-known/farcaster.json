@@ -4,29 +4,27 @@
       "version": "1",
       "iconUrl": "https://devmolink.com/icon.png",
       "homeUrl": "https://devmolink.com",
-      "imageUrl": "https://devmolink.com/image.png",
-      "buttonTitle": "Use us as an excuse.",
-      "splashImageUrl": "https://devmolink.com/splash.png",
+      "imageUrl": "https://devmolink.com/screenshotDevmoLink.png",
+      "buttonTitle": "Find Your Match",
+      "splashImageUrl": "https://devmolink.com/icon.png",
       "splashBackgroundColor": "#212122",
       "webhookUrl": "https://devmolink.com/api/webhook",
-      "subtitle": "The Tinder for Developers",
-      "description": "What is SF full of? Horny clout chasing teens. Yet, they don't register on Hinge, Tinder, Bumble, whatever. Why? Stigma. They sign up for \"running clubs\" for an excuse. Now? You have an excuse. Or you can just find other developers. I dont care.",
       "primaryCategory": "social",
+      "screenshotUrls": [
+        "https://devmolink.com/screenshotDevmoLink.png"
+      ],
+      "heroImageUrl": "https://devmolink.com/icon.png",
       "tags": [
         "social",
-        "tinder",
-        "coding",
-        "developers",
-        "hinge"
+        "messaging",
+        "community"
       ],
-      "tagline": "The Tinder for Developers",
-      "ogTitle": "DevmoLink",
+      "tagline": "Where Developers Connect",
+      "ogTitle": "DevmoLink - Developers Link",
+      "ogDescription": "Find developers for projects, jobs, dating, or hackathon teams.",
       "ogImageUrl": "https://devmolink.com/icon.png",
-      "castShareUrl": "https://devmolink.com/icon.png",
-      "ogDescription": "Find hot asian girls in SF and act as if you were trying to find hackathon teammates lmao.",
-      "screenshotUrls": [
-        "https://devmolink.com/icon.png"
-      ],
-      "heroImageUrl": "https://devmolink.com/icon.png"
+      "castShareUrl": "https://warpcast.com/~/compose?text=Check%20out%20DevmoLink%20-%20The%20Tinder%20for%20Developers!&embeds[]=https://devmolink.com",
+      "subtitle": "The Tinder for Developers",
+      "description": "Connect with other developers for jobs, projects, relationships, or hackathon teams. DevmoLink is where developers meet."
     }
-  } 
+  }
