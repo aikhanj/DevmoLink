@@ -1,0 +1,39 @@
+{
+    "accountAssociation": {
+      "header": "eyJmaWQiOjEyMzQ1LCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4MTIzNDU2Nzg5YWJjZGVmIn0",
+      "payload": "eyJkb21haW4iOiJkZXZtb2xpbmsuY29tIn0",
+      "signature": "MHg4Yzk2YjVhNmQzZTIxNDViN2Y4OWE0YzNlZmIyMTM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1"
+    },
+    "frame": {
+      "name": "DevmoLink",
+      "version": "1.0.0",
+      "iconUrl": "https://devmolink.com/icon.png",
+      "splashImageUrl": "https://devmolink.com/icon.png",
+      "splashBackgroundColor": "#212122",
+      "homeUrl": "https://devmolink.com",
+      "imageUrl": "https://devmolink.com/icon.png",
+      "buttonTitle": "Find Your Match",
+      "webhookUrl": "https://devmolink.com/api/webhook",
+      "subtitle": "The Tinder for Developers",
+      "description": "Connect with other developers for jobs, projects, relationships, or hackathon teams. DevmoLink is where developers meet.",
+      "primaryCategory": "social",
+      "tags": [
+        "social",
+        "networking",
+        "developers",
+        "coding",
+        "dating",
+        "hackathon",
+        "tech"
+      ],
+      "tagline": "Where Developers Connect",
+      "ogTitle": "DevmoLink - Where Developers Connect", 
+      "ogDescription": "Find developers for projects, jobs, dating, or hackathon teams. Join the premier developer networking platform.",
+      "ogImageUrl": "https://devmolink.com/icon.png",
+      "castShareUrl": "https://devmolink.com/share",
+      "screenshotUrls": [
+        "https://devmolink.com/screenshotDevmoLink.png"
+      ],
+      "heroImageUrl": "https://devmolink.com/icon.png"
+    }
+  } 
