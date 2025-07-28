@@ -70,7 +70,7 @@ export class FarcasterSDK {
     }
   }
 
-  async close(payload?: Record<string, any>): Promise<void> {
+  async close(payload?: Record<string, unknown>): Promise<void> {
     if (!this.initialized) {
       throw new Error('SDK not initialized');
     }
@@ -146,11 +146,11 @@ export const farcasterConfig: MiniAppConfig = {
 export function createFarcasterError(
   code: string,
   message: string,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): FarcasterError {
   return { code, message, details };
 }
 
-export function isFarcasterError(error: any): error is FarcasterError {
+export function isFarcasterError(error: unknown): error is FarcasterError {
   return error && typeof error === 'object' && 'code' in error && 'message' in error;
 } 

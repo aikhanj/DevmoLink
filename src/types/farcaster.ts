@@ -87,7 +87,7 @@ export interface NotificationPayload {
 export interface FarcasterError {
   code: string;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export interface FrameMetadata {
@@ -110,7 +110,7 @@ export interface WalletConfig {
   address?: string;
   chainId?: number;
   isConnected: boolean;
-  connector?: any;
+  connector?: unknown;
 }
 
 export interface AuthSession {

@@ -14,7 +14,7 @@ interface FarcasterContextType {
   isInFrame: boolean;
   isMiniAppContext: boolean;
   openUrl: (url: string) => Promise<void>;
-  close: (payload?: Record<string, any>) => Promise<void>;
+  close: (payload?: Record<string, unknown>) => Promise<void>;
 }
 
 const FarcasterContext = createContext<FarcasterContextType | undefined>(undefined);
@@ -86,7 +86,7 @@ export function FarcasterProvider({ children }: FarcasterProviderProps) {
     }
   };
 
-  const close = async (payload?: Record<string, any>) => {
+  const close = async (payload?: Record<string, unknown>) => {
     try {
       await farcasterSDK.close(payload);
     } catch (err) {

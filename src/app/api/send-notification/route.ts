@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   NotificationPayload, 
-  RateLimitConfig,
-  createFarcasterError 
+  RateLimitConfig
 } from '@/types/farcaster';
+import { createFarcasterError } from '@/lib/farcaster';
 
 // Rate limiting configuration per Farcaster specs:
 // - 1 notification per 30 seconds per token
@@ -124,46 +124,53 @@ async function sendFarcasterNotification(payload: NotificationPayload): Promise<
   };
 }
 
-function validateNotificationPayload(data: any): NotificationPayload | null {
+function validateNotificationPayload(data: unknown): NotificationPayload | null {
+  // Type guard to ensure data is an object
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+  
+  const payload = data as Record<string, unknown>;
+  
   // Validate required fields
-  if (!data.notificationId || typeof data.notificationId !== 'string') {
+  if (!payload.notificationId || typeof payload.notificationId !== 'string') {
     return null;
   }
   
-  if (!data.title || typeof data.title !== 'string' || data.title.length > 100) {
+  if (!payload.title || typeof payload.title !== 'string' || payload.title.length > 100) {
     return null;
   }
   
-  if (!data.body || typeof data.body !== 'string' || data.body.length > 200) {
+  if (!payload.body || typeof payload.body !== 'string' || payload.body.length > 200) {
     return null;
   }
   
-  if (!Array.isArray(data.tokens) || data.tokens.length === 0 || data.tokens.length > 100) {
+  if (!Array.isArray(payload.tokens) || payload.tokens.length === 0 || payload.tokens.length > 100) {
     return null;
   }
   
   // Validate token format
-  for (const token of data.tokens) {
+  for (const token of payload.tokens) {
     if (typeof token !== 'string' || token.length < 10) {
       return null;
     }
   }
   
   // Validate target URL if provided
-  if (data.targetUrl) {
+  if (payload.targetUrl) {
     try {
-      new URL(data.targetUrl);
+      new URL(payload.targetUrl as string);
     } catch {
       return null;
     }
   }
   
   return {
-    notificationId: data.notificationId,
-    title: data.title,
-    body: data.body,
-    targetUrl: data.targetUrl,
-    tokens: data.tokens
+    notificationId: payload.notificationId as string,
+    title: payload.title as string,
+    body: payload.body as string,
+    targetUrl: payload.targetUrl as string | undefined,
+    tokens: payload.tokens as string[]
   };
 }
 

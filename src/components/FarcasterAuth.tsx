@@ -15,7 +15,7 @@ export function FarcasterAuth({
   onAuthError, 
   redirectUrl 
 }: FarcasterAuthProps) {
-  const { user, isReady, isInFrame } = useFarcaster();
+  const { user, isReady, isInFrame, openUrl } = useFarcaster();
   const [authState, setAuthState] = useState<'idle' | 'signing' | 'verifying' | 'success' | 'error'>('idle');
   const [session, setSession] = useState<AuthSession | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +79,6 @@ export function FarcasterAuth({
       // Open auth URL
       if (isInFrame) {
         // In Mini App context, use SDK
-        const { openUrl } = useFarcaster();
         await openUrl(authUrl);
       } else {
         // Regular web context
