@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { farcasterSDK } from '@/lib/farcaster';
-import { FarcasterUser, FarcasterContext, FarcasterError } from '@/types/farcaster';
+import { FarcasterUser, FarcasterError } from '@/types/farcaster';
+import type { FarcasterContext } from '@/types/farcaster';
 
 interface FarcasterContextType {
   isLoading: boolean;
