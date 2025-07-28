@@ -58,11 +58,19 @@ export default function ChatThreadPage() {
   useEffect(() => {
     if (!decodedEmail) return;
     setLoading(true);
-    fetch("/api/profiles")
-      .then((res) => res.json())
-      .then((data: Profile[]) => {
-        const p = data.find((d) => d.email === decodedEmail || d.id === decodedEmail);
-        setProfile(p || null);
+    fetch(`/api/profiles/${encodeURIComponent(decodedEmail)}`)
+      .then((res) => {
+        if (res.status === 404) {
+          return null;
+        }
+        return res.json();
+      })
+      .then((data: Profile | null) => {
+        setProfile(data);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch profile:", error);
+        setProfile(null);
       })
       .finally(() => setLoading(false));
   }, [decodedEmail]);
