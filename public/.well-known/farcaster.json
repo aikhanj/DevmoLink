@@ -1,4 +1,10 @@
-{
+{ 
+  "accountAssociation": {
+    "header": "eyJmaWQiOjExNDI0MDUsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgxM0RENDVGMjI5NmNjMTM1Mjk4NUQxMTI3NEVmQzYxOTlBNjRBZDg2In0",
+    "payload": "eyJkb21haW4iOiJkZXZtb2xpbmsuY29tIn0",
+    "signature": "MHhiMzZiZDZlMzAzOTFlNTIzMTRmNTRjNjllMmRlZDdkY2RlYmM0MzRhYTJhMzI5ZGU4ZWU4ZDYwYzY0YzAyNjg2Mjk3MDBiMDRjZTRkNjI4MzczNDIzM2MxNDZlNzczZjQ4MDZmMmI2OWM1OTEwY2MxZjU4Zjg2YmJlN2Q5NWY4YzFi"
+  },
+  "miniApp": {
   "frame": {
     "name": "DevmoLink",
     "version": "1",
@@ -27,4 +33,5 @@
     "subtitle": "The Tinder for Developers",
     "description": "Connect with other developers for jobs, projects, relationships, or hackathon teams. DevmoLink is where developers meet."
   }
+}
 }
