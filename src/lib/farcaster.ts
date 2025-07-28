@@ -24,18 +24,12 @@ export class FarcasterSDK {
     if (this.initialized) return;
 
     try {
-      const result = await sdk.actions.ready();
-      
-      // Check if result exists before accessing its properties
-      if (result && result.isSuccess) {
-        this.initialized = true;
-        this.context = result.data.context || null;
-        this.user = result.data.user || null;
-      } else {
-        // Handle cases where result is undefined or isSuccess is false
-        const errorMessage = result?.error?.message || 'SDK initialization failed: Not in Farcaster client or unknown error.';
-        throw new Error(errorMessage);
-      }
+      // `ready` does not return a value (typed as void) – it throws on failure.
+      await sdk.actions.ready();
+
+      // Mark SDK as ready. Context/user information may be fetched via other
+      // SDK calls once those APIs become available.
+      this.initialized = true;
     } catch (error) {
       console.error('Failed to initialize Farcaster SDK:', error);
       throw error;
@@ -60,10 +54,11 @@ export class FarcasterSDK {
     }
 
     try {
-      const result = await sdk.actions.openUrl(url);
-      if (result && !result.isSuccess) {
-        throw new Error(`Failed to open URL: ${result.error?.message || 'Unknown error'}`);
-      }
+      // `openUrl`'s TypeScript signature currently expects no arguments, but the
+      // runtime accepts a URL string. Cast to `any` to satisfy the compiler until
+      // the upstream types are updated.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (sdk.actions as any).openUrl(url);
     } catch (error) {
       console.error('Failed to open URL:', error);
       throw error;
@@ -76,10 +71,10 @@ export class FarcasterSDK {
     }
 
     try {
-      const result = await sdk.actions.close(payload);
-      if (result && !result.isSuccess) {
-        throw new Error(`Failed to close frame: ${result.error?.message || 'Unknown error'}`);
-      }
+      // Similar to `openUrl`, the type signature for `close` does not currently
+      // accept an argument even though the runtime does. Use `any` cast.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (sdk.actions as any).close(payload);
     } catch (error) {
       console.error('Failed to close frame:', error);
       throw error;
@@ -152,5 +147,10 @@ export function createFarcasterError(
 }
 
 export function isFarcasterError(error: unknown): error is FarcasterError {
-  return error && typeof error === 'object' && 'code' in error && 'message' in error;
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in (error as Record<string, unknown>) &&
+    'message' in (error as Record<string, unknown>)
+  );
 } 
