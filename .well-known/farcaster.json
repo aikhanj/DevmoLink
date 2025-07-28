@@ -10,7 +10,7 @@
       "iconUrl": "https://devmolink.com/icon.png",
       "homeUrl": "https://devmolink.com",
       "imageUrl": "https://devmolink.com/icon.png",
-      "buttonTitle": "Find Your Match",
+      "buttonTitle": "Find Your Match (Developers Only)",
       "splashImageUrl": "https://devmolink.com/icon.png",
       "splashBackgroundColor": "#212122",
       "webhookUrl": "https://devmolink.com/api/webhook",
