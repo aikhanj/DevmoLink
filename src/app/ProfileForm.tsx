@@ -575,6 +575,11 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     reader.readAsDataURL(file)
   }
 
+  const handleRemoveAvatar = () => {
+    setFormData((prev) => ({ ...prev, avatar: null }))
+    setAvatarPreview("")
+  }
+
   // Handle profession toggle
   const toggleProfession = (profession: string) => {
     setFormData((prev) => {
@@ -941,13 +946,22 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
         }
 
         // If no duplicate found, add to formData with hash and create preview
+        const isFirstPhoto = formData.photos.length === 0
+        const shouldSetAsAvatar = !formData.avatar && !avatarPreview && isFirstPhoto
+        
         setFormData(prev => ({
           ...prev,
           photos: [...prev.photos, croppedFile],
           photoHashes: [...prev.photoHashes, croppedFileHash], // Add hash to tracking
+          ...(shouldSetAsAvatar && { avatar: croppedFile }) // Auto-set as avatar if conditions met
         }))
 
         setPhotoPreviews(prev => [...prev, croppedDataUrl])
+
+        // Auto-set avatar preview if no avatar is currently set (first photo only)
+        if (shouldSetAsAvatar) {
+          setAvatarPreview(croppedDataUrl)
+        }
 
         // Close modal and reset crop state
         setCropModalOpen(false)
@@ -1093,6 +1107,15 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                 >
                   <Camera className="w-4 h-4 text-black" />
                 </button>
+                {(formData.avatar || avatarPreview) && (
+                  <button
+                    onClick={handleRemoveAvatar}
+                    className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                    aria-label="Remove avatar"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                )}
               </div>
             </div>
 
