@@ -4,6 +4,7 @@ import { useSession, signIn } from "next-auth/react";
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingContext } from "../MainLayout";
+import { toast } from 'react-hot-toast';
 
 interface ChatProfile {
   id: string; // email
@@ -137,7 +138,7 @@ export default function ChatsPage() {
                 try {
                   const response = await fetch("/api/chats/reset-all", { method: "POST" });
                   if (response.ok) {
-                    alert("🧹 All user data reset globally! Everyone can start fresh.");
+                    toast.success("🧹 All user data reset globally! Everyone can start fresh.");
                   }
                 } catch (error) {
                   console.error("Reset error:", error);

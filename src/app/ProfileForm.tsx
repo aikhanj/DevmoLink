@@ -682,7 +682,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
 
     const userEmail = sessionEmail ?? getAuth().currentUser?.email ?? null
     if (!userEmail) {
-      alert('User not authenticated yet. Please wait a moment and try again.')
+      toast.error('User not authenticated yet. Please wait a moment and try again.')
       return
     }
 
@@ -754,12 +754,23 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
 
       setShowConfetti(true)
       setTimeout(() => {
-        alert(mode === 'edit' ? 'Profile Updated!' : 'Profile Created!')
+        toast.success(mode === 'edit' ? 'Profile Updated!' : 'Profile Created!',
+          {
+            duration: 3000,
+          position: 'top-center',
+          style: {
+            background: '#1F2937',
+            color: '#fff',
+            border: '1px solid #374151',
+          },
+          icon: '✅',
+          }
+        )
         if (onClose) onClose()
       }, 1500)
     } catch (error) {
       console.error('Error saving profile:', error)
-      alert('Failed to save profile. Please try again.')
+      toast.error('Failed to save profile. Please try again.')
     } finally {
       setSaving(false)
     }

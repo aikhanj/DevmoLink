@@ -14,6 +14,7 @@ import { LoadingContext } from "./MainLayout";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import ProfileForm from "./ProfileForm";
+import { toast } from 'react-hot-toast';
 
 interface Profile {
   id: string;
@@ -1120,7 +1121,7 @@ export default function Home() {
             if (dir === "right" && result.matched) {
               // For matched users, we need to get the email for chat functionality
               // This could be improved by having the API return the matched user's info
-              alert(`🎉 It's a Match! You and ${showProfile.name} liked each other!`);
+              toast.success(`🎉 It's a Match! You and ${showProfile.name} liked each other!`);
               // Note: Chat functionality might need updating to work with profile IDs
               // For now, we'll need to handle this differently or update chat logic
               console.log(`Match with profile ID: ${showProfile.id}`);
