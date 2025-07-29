@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../../../firebase";
 
+import { NextRequest } from "next/server";
+
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { email: string } }
 ) {
   try {
