@@ -49,7 +49,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   // console.log('settingsOpen:', settingsOpen);
 
   // Check if current page needs special layout (chat or security audit)
-  const isChatPage = pathname?.startsWith('/chats') || pathname?.includes('/chat');
+  const isChatPage = pathname?.startsWith('/chats/') || pathname?.includes('/chat/'); // Only individual chat pages, not /chats list
   const isSecurityAuditPage = pathname?.startsWith('/security-audit');
   const needsFullLayout = isChatPage || isSecurityAuditPage;
 
