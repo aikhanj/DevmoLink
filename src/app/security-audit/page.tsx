@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 interface TestResult {
   type: 'success' | 'error' | 'warning' | 'info';
@@ -405,13 +406,13 @@ export default function SecurityAuditPage() {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
         
-        alert('✅ Backup created and downloaded successfully!');
+        toast.success('✅ Backup created and downloaded successfully!');
       } else {
         const error = await response.json();
-        alert(`❌ Backup failed: ${error.message || error.error}`);
+        toast.error(`❌ Backup failed: ${error.message || error.error}`);
       }
     } catch (error) {
-      alert(`❌ Backup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`❌ Backup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsRunning(false);
     }
@@ -431,12 +432,12 @@ export default function SecurityAuditPage() {
       const result = await response.json();
       
       if (response.ok) {
-        alert(`✅ Restore successful!\n\n${result.message}\n\nRestored: ${result.stats.restored.join(', ')}`);
+        toast.success(`✅ Restore successful!\n\n${result.message}\n\nRestored: ${result.stats.restored.join(', ')}`);
       } else {
-        alert(`❌ Restore failed: ${result.message || result.error}`);
+        toast.error(`❌ Restore failed: ${result.message || result.error}`);
       }
     } catch (error) {
-      alert(`❌ Restore failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`❌ Restore failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsRunning(false);
     }
@@ -449,12 +450,12 @@ export default function SecurityAuditPage() {
       const result = await response.json();
       
       if (response.ok) {
-        alert(`✅ Test profiles restored!\n\n${result.message}\n\nCreated:\n${result.created.join('\n')}`);
+        toast.success(`✅ Test profiles restored!\n\n${result.message}\n\nCreated:\n${result.created.join('\n')}`);
       } else {
-        alert(`❌ Restore failed: ${result.message || result.error}`);
+        toast.error(`❌ Restore failed: ${result.message || result.error}`);
       }
     } catch (error) {
-      alert(`❌ Restore failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`❌ Restore failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsRunning(false);
     }
