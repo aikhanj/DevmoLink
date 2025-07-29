@@ -49,6 +49,12 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
   };
 
   const handleStart = (clientX: number, clientY: number, e: React.MouseEvent | React.TouchEvent) => {
+    if (isActive) {
+      // For swipeable cards, just track basic state but don't prevent TinderCard
+      setIsPressed(true);
+      setPressStart({ x: clientX, y: clientY, time: Date.now() });
+      return;
+    }
     e.stopPropagation(); // Prevent immediate TinderCard activation
     setIsPressed(true);
     setPressStart({ x: clientX, y: clientY, time: Date.now() });
@@ -68,6 +74,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
 
   const handleMove = (clientX: number, clientY: number) => {
     if (!isPressed) return;
+    if (isActive) return; // Skip hint updates for swipeable cards to avoid jitter
     
     const deltaX = clientX - pressStart.x;
     const deltaY = Math.abs(clientY - pressStart.y);
@@ -92,8 +99,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
     
     resetState();
     
-    // If it was a quick tap (under hold time) and didn't move much, change photo
-    if (timeDiff < HOLD_MS && deltaX < 10 && deltaY < 10) {
+    // Photo switching only for non-swipeable cards
+    if (!isActive && timeDiff < HOLD_MS && deltaX < 10 && deltaY < 10) {
       const rect = document.querySelector('.profile-card')?.getBoundingClientRect();
       if (rect) {
         const clickX = clientX - rect.left;
@@ -137,6 +144,12 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
   return (
     <div
       className="profile-card relative w-full aspect-[3/4] max-w-[400px] max-h-[600px] mx-auto rounded-xl overflow-hidden bg-gray-900 shadow-lg will-change-transform select-none"
+      style={{
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}
       onMouseDown={(e) => handleStart(e.clientX, e.clientY, e)}
       onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
       onMouseUp={(e) => handleEnd(e.clientX, e.clientY)}

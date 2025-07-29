@@ -1367,15 +1367,22 @@ export default function Home() {
                   <AnyTinderCard
                     key={filteredProfiles[current].id}
                     ref={tinderCardRef}
-                    flickDuration={30}
+                    flickDuration={800}
                     swipeRequirementType="position"
-                    swipeThreshold={120}
+                    swipeThreshold={150}
+                    inputRotationRange={[-200, 0, 200]}
+                    outputRotationRange={["-0.5deg", "0deg", "0.5deg"]}
                     flickOnSwipe={true}
                     onSwipe={handleSwipe}
                     onCardLeftScreen={() => handleCardLeftScreen(filteredProfiles[current].id)}
                     preventSwipe={['up', 'down']}
                     className="select-none"
-                    style={{ height: 500 }}
+                    style={{ 
+                      height: 500,
+                      willChange: 'transform',
+                      transform: 'translateZ(0)',
+                      backfaceVisibility: 'hidden'
+                    }}
                   >
                     <ProfileCard profile={filteredProfiles[current]} onSwipe={handleSwipe} isActive={true} />
                   </AnyTinderCard>
@@ -1400,9 +1407,7 @@ export default function Home() {
           </>
         )}
       </div>
-      {/* <footer className="text-[#34B6FF] text-xs mt-10 mb-4 opacity-80 select-none font-mono">
-                  &copy; {new Date().getFullYear()} devmolink. Not affiliated with any university.
-      </footer> */}
+      
     </div>
   );
 }
