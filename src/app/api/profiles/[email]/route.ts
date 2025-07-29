@@ -6,10 +6,9 @@ import { NextRequest } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { email: string } }
 ) {
   try {
-    const email = decodeURIComponent(params.email);
+    const email = request.nextUrl.searchParams.get("email");
     
     if (!email) {
       return NextResponse.json({ error: "Email parameter is required" }, { status: 400 });
