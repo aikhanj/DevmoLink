@@ -48,8 +48,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   // console.log('settingsOpen:', settingsOpen);
 
-  // Determine if this is a chat page (needs full screen layout)
-  const isChatPage = pathname.startsWith("/chats/") && pathname !== "/chats";
+  // Check if current page needs special layout (chat or security audit)
+  const isChatPage = pathname?.startsWith('/chats') || pathname?.includes('/chat');
+  const isSecurityAuditPage = pathname?.startsWith('/security-audit');
+  const needsFullLayout = isChatPage || isSecurityAuditPage;
 
   const handleGoogleLogin = () => {
     signIn("google", { callbackUrl: "/" });
@@ -61,7 +63,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   return (
     <LoadingContext.Provider value={{ loading, setLoading }}>
       <MiniAppWrapper>
-        <div className="min-h-screen grid grid-rows-[auto_1fr] bg-[#030712] dark relative">
+        <div className={`min-h-screen ${isSecurityAuditPage ? 'flex flex-col' : 'grid grid-rows-[auto_1fr]'} bg-[#030712] dark relative ${isSecurityAuditPage ? 'overflow-y-auto' : ''}`}>
         {/* Global SVG grid background overlay */}
         <div className="pointer-events-none fixed inset-0 z-0 opacity-10">
           <svg width="100%" height="100%" className="absolute inset-0" style={{ minHeight: '100vh' }}>
@@ -133,9 +135,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         
         {/* Main content with fade, flex-1 for vertical centering */}
 
-        {isChatPage ? (
-          /* Chat pages need full screen without constraints */
-          <main className={`h-full flex flex-col w-full transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        {needsFullLayout ? (
+          /* Chat pages and security audit need full screen without constraints */
+          <main className={`min-h-screen flex flex-col w-full transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${isSecurityAuditPage ? 'overflow-y-auto' : ''}`}>
             {children}
           </main>
         ) : (
