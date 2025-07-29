@@ -65,11 +65,12 @@ async function hasPhotoAccess(viewerEmail: string, targetEmail: string): Promise
 
 export async function GET(
   request: Request,
-  { params }: { params: { params: string[] } }
+  { params }: { params: Promise<{ params: string[] }> }
 ) {
   try {
     // Await params to fix Next.js warning
-    const { params: routeParams } = await params;
+    const routeParams = await params;
+    const [secureId, photoIdentifier] = routeParams.params;
     
     // Require authentication to view any photos
     const session = await getServerSession(authOptions);
@@ -78,7 +79,6 @@ export async function GET(
     }
 
     const currentUserEmail = session.user.email;
-    const [secureId, photoIdentifier] = routeParams;
     
     if (!secureId || !photoIdentifier) {
       return NextResponse.json({ error: "Invalid photo request" }, { status: 400 });
