@@ -6,7 +6,7 @@ import { authOptions } from "../auth/[...nextauth]/authOptions";
 import { getSecureIdForEmail } from "../../utils/secureId";
 
 // Filter sensitive data from profiles for public swiping
-const filterProfileForPublic = (profile: any, secureId: string) => ({
+const filterProfileForPublic = (profile: Record<string, unknown>, secureId: string) => ({
   id: secureId, // Use secure hashed ID instead of email
   name: profile.name,
   age: profile.age,
@@ -21,7 +21,7 @@ const filterProfileForPublic = (profile: any, secureId: string) => ({
   programmingLanguages: profile.programmingLanguages || [],
   themes: profile.themes || [],
   // Replace direct photo URLs with secure proxy URLs using secure ID
-  photos: (profile.photos || []).map((photo: string, index: number) => 
+  photos: ((profile.photos as string[]) || []).map((photo: string, index: number) => 
     `/api/photos/secure/${secureId}/${index}`
   ),
   avatarUrl: profile.avatarUrl ? `/api/photos/secure/${secureId}/avatar` : null,
