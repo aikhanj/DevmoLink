@@ -3,7 +3,7 @@ import { base, mainnet, optimism, arbitrum } from 'wagmi/chains';
 import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
 
 // WalletConnect project ID - you'll need to get this from WalletConnect
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'your-project-id';
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '0e15d90a6b3ba3db2273f8be658334b8';
 
 export const wagmiConfig = createConfig({
   chains: [mainnet, base, optimism, arbitrum],
