@@ -797,6 +797,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   // Function to get all missing fields
   const getMissingFields = () => {
     const missing = []
+    if (!formData.avatar && !avatarPreview) missing.push('Avatar')
     if (!formData.name) missing.push('Name')
     if (formData.age === 0) missing.push('Age')
     if (!formData.gender) missing.push('Gender')
@@ -1021,13 +1022,29 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
           {/* Avatar Section */}
           <div className="space-y-4">
             <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">Choose your avatar</h2>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <h2 className="text-xl font-semibold">Choose your avatar</h2>
+                {!formData.avatar && !avatarPreview && (
+                  <span className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded-full border border-red-500/30">
+                    Required
+                  </span>
+                )}
+              </div>
               <p className="text-gray-400 text-sm">This will be your profile picture</p>
+              {!formData.avatar && !avatarPreview && (
+                <p className="text-[#00FF9A] text-sm font-medium mt-1">
+                  👆 Tap the camera icon to add your avatar
+                </p>
+              )}
             </div>
 
             <div className="flex justify-center">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-gray-800 border-2 border-gray-600 overflow-hidden flex items-center justify-center">
+                <div className={`w-24 h-24 rounded-full bg-gray-800 border-2 overflow-hidden flex items-center justify-center transition-colors ${
+                  !formData.avatar && !avatarPreview 
+                    ? 'border-red-500/50 ring-2 ring-red-500/20' 
+                    : 'border-gray-600'
+                }`}>
                   {avatarPreview ? (
                     <img
                       src={avatarPreview}
@@ -1040,13 +1057,28 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                 </div>
                 <button
                   onClick={() => avatarInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-[#00FF9A] rounded-full flex items-center justify-center hover:bg-[#00CC7A] transition-colors"
+                  className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                    !formData.avatar && !avatarPreview
+                      ? 'bg-[#00FF9A] hover:bg-[#00CC7A] animate-pulse'
+                      : 'bg-[#00FF9A] hover:bg-[#00CC7A]'
+                  }`}
                   aria-label="Upload avatar"
                 >
                   <Camera className="w-4 h-4 text-black" />
                 </button>
               </div>
             </div>
+
+            {!formData.avatar && !avatarPreview && (
+              <div className="text-center">
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="px-4 py-2 bg-[#00FF9A] text-black rounded-lg hover:bg-[#00CC7A] transition-colors font-medium"
+                >
+                  Add Avatar Photo
+                </button>
+              </div>
+            )}
 
             <input
               ref={avatarInputRef}
@@ -1141,8 +1173,8 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                   "w-full px-3 py-2 bg-gray-800 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent",
                   getFieldError('name') ? "border-red-500" : "border-gray-700"
                 )}
-                placeholder="Your full name"
-                aria-label="Full name"
+                placeholder="Your name"
+                aria-label="Name"
                 maxLength={30}
               />
               {getFieldError('name') && (
