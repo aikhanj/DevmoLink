@@ -3,6 +3,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../../../firebase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/authOptions";
+import { getSecureIdForEmail } from "../../../utils/secureId";
 
 export async function GET() {
   try {
@@ -29,7 +30,7 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
-    // Get profiles for matched users only
+    // Get profiles for matched users only - but return secure data
     const profilesRef = collection(db, "profiles");
     const profilesQuery = query(
       profilesRef,
@@ -37,10 +38,20 @@ export async function GET() {
     );
     
     const profilesSnapshot = await getDocs(profilesQuery);
-    const profiles = profilesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const profiles = profilesSnapshot.docs.map(doc => {
+      const email = doc.id;
+      const secureId = getSecureIdForEmail(email);
+      const profileData = doc.data();
+      
+      // Return only safe profile data with secure IDs
+      return {
+        id: secureId, // Use secure ID instead of email
+        name: profileData.name,
+        age: profileData.age,
+        avatarUrl: profileData.avatarUrl ? `/api/photos/secure/${secureId}/avatar` : null,
+        // Remove email and other sensitive data
+      };
+    });
 
     return NextResponse.json(profiles);
     

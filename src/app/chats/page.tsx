@@ -151,36 +151,7 @@ export default function ChatsPage() {
             
              
            </div>
-           <div className="flex justify-center mb-4">
-             <button
-               onClick={async () => {
-                 const confirmed = confirm("☢️ NUCLEAR WARNING ☢️\n\nThis will COMPLETELY OBLITERATE your ENTIRE Firestore database!\n\nALL profiles, messages, matches, swipes - EVERYTHING will be PERMANENTLY DELETED!\n\nAre you absolutely sure you want to proceed with TOTAL ANNIHILATION?");
-                 
-                 if (confirmed) {
-                   const doubleConfirm = confirm("🚨 FINAL WARNING 🚨\n\nLast chance to abort nuclear launch!\n\nClick OK to DESTROY EVERYTHING or Cancel to abort mission.");
-                   
-                   if (doubleConfirm) {
-                     try {
-                       const response = await fetch("/api/admin/nuclear-reset", { method: "POST" });
-                       const result = await response.json();
-                       if (response.ok) {
-                         alert(`☢️ ${result.message}\n\nYour Firestore database has been COMPLETELY WIPED!`);
-                       } else {
-                         alert("Nuclear launch failed!");
-                       }
-                     } catch (error) {
-                       console.error("Nuclear error:", error);
-                       alert("Nuclear launch system malfunction!");
-                     }
-                     setChats([]);
-                   }
-                 }
-               }}
-               className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-800 text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all duration-200 text-sm border-2 border-red-400 animate-pulse"
-             >
-                            ☢️ NUCLEAR RESET ☢️
-           </button>
-               </div>
+          
         </>
         )}
                  {chats.length === 0 ? (
