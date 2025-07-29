@@ -21,6 +21,7 @@ import {
   ChevronsUpDown,
 } from "lucide-react"
 import { toast } from 'react-hot-toast'
+import { COUNTRIES } from './utils/countries'
 
 // Utility function for combining class names
 const cn = (...classes: (string | undefined | false | null)[]) => {
@@ -90,7 +91,7 @@ interface FormData {
   photos: File[]
   name: string
   age: number
-  timezone: string
+  timezone: string // Now stores country code (e.g., 'US', 'CA', 'DE')
   gender: string
   professions: string[]
   skills: {
@@ -219,18 +220,18 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     age: 25,
     timezone: "",
     gender: "",
-    professions: [],
+    professions: ["Student"],
     skills: {
-      languages: [],
+      languages: ["Python"],
       frameworks: [],
       devops: [],
       ml: [],
       web3: [],
       apis: [],
     },
-    tools: [],
-    experienceLevel: "",
-    interests: [],
+    tools: ["GitHub"],
+    experienceLevel: "Beginner",
+    interests: ["Just vibe"],
     description: "",
     github: "",
     linkedin: "",
@@ -267,10 +268,36 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   const skillsDropdownRef = useRef<HTMLDivElement>(null)
   const toolsDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Auto-detect timezone
+  // Auto-detect country based on timezone
   useEffect(() => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    setFormData((prev) => ({ ...prev, timezone }))
+    
+    // Map common timezones to country codes
+    const timezoneToCountry: Record<string, string> = {
+      'America/New_York': 'US',
+      'America/Chicago': 'US', 
+      'America/Denver': 'US',
+      'America/Los_Angeles': 'US',
+      'America/Toronto': 'CA',
+      'Europe/London': 'GB',
+      'Europe/Paris': 'FR',
+      'Europe/Berlin': 'DE',
+      'Europe/Amsterdam': 'NL',
+      'Europe/Stockholm': 'SE',
+      'Asia/Tokyo': 'JP',
+      'Asia/Shanghai': 'CN',
+      'Asia/Seoul': 'KR',
+      'Asia/Kolkata': 'IN',
+      'Asia/Singapore': 'SG',
+      'Australia/Sydney': 'AU',
+      'America/Sao_Paulo': 'BR',
+      'America/Mexico_City': 'MX',
+      'Africa/Lagos': 'NG',
+      'Africa/Cairo': 'EG'
+    }
+    
+    const detectedCountry = timezoneToCountry[timezone] || ''
+    setFormData((prev) => ({ ...prev, timezone: detectedCountry }))
   }, [])
 
   // Load existing profile for edit mode
@@ -1212,21 +1239,19 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="timezone" className="block text-sm font-medium text-gray-300">Timezone</label>
+              <label htmlFor="timezone" className="block text-sm font-medium text-gray-300">Country where you reside</label>
               <select
                 value={formData.timezone}
                 onChange={(e) => setFormData((prev) => ({ ...prev, timezone: e.target.value }))}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[#00FF9A] focus:border-transparent"
-                aria-label="Select timezone"
+                aria-label="Select your location"
               >
-                <option value="America/New_York">Eastern Time</option>
-                <option value="America/Chicago">Central Time</option>
-                <option value="America/Denver">Mountain Time</option>
-                <option value="America/Los_Angeles">Pacific Time</option>
-                <option value="Europe/London">GMT</option>
-                <option value="Europe/Paris">CET</option>
-                <option value="Asia/Tokyo">JST</option>
-                <option value={formData.timezone}>{formData.timezone}</option>
+                <option value="">Select your country</option>
+                {COUNTRIES.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.name}
+                  </option>
+                ))}
               </select>
             </div>
 
