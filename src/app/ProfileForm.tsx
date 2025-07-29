@@ -27,6 +27,15 @@ const cn = (...classes: (string | undefined | false | null)[]) => {
   return classes.filter(Boolean).join(' ')
 }
 
+// Utility function to generate SHA-256 hash from file
+const generateFileHash = async (file: File): Promise<string> => {
+  const arrayBuffer = await file.arrayBuffer()
+  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  return hashHex
+}
+
 // Crop helper function
 const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
@@ -98,6 +107,7 @@ interface FormData {
   description: string
   github: string
   linkedin: string
+  photoHashes: string[] // Added for tracking uploaded photo hashes
 }
 
 interface ProfileFormProps {
@@ -224,6 +234,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     description: "",
     github: "",
     linkedin: "",
+    photoHashes: [], // Initialize photoHashes
   })
 
 
@@ -234,6 +245,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
   const [saving, setSaving] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string>("")
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
+  const [existingPhotoHashes, setExistingPhotoHashes] = useState<string[]>([]) // Track existing photo hashes
   const [cropModalOpen, setCropModalOpen] = useState(false)
   const [cropImage, setCropImage] = useState<string | null>(null)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
@@ -316,6 +328,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
           description: data.description || "",
           github: data.github || "",
           linkedin: data.linkedin || "",
+                      photoHashes: data.photoHashes || [], // Load existing photo hashes
         }))
         
         if (data.avatarUrl) {
@@ -323,6 +336,9 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
         }
         if (data.photos) {
           setPhotoPreviews(data.photos)
+        }
+        if (data.photoHashes) {
+          setExistingPhotoHashes(data.photoHashes)
         }
       }
       setLoading(false)
@@ -363,18 +379,30 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
     formData.interests.length > 0
 
   // Handle photo upload
-  const handlePhotoUpload = (files: FileList | null) => {
+  const handlePhotoUpload = async (files: FileList | null) => {
     if (!files) return
 
     const file = files[0] // Handle one file at a time for cropping
     if (!file) return
 
-    // Check if it's a duplicate before proceeding
-    const isDuplicate = formData.photos.some(existingFile => 
-      existingFile.name === file.name && existingFile.size === file.size
-    )
+    // Generate hash for the new file
+    let fileHash: string
+    try {
+      fileHash = await generateFileHash(file)
+    } catch (error) {
+      console.error('Error generating file hash:', error)
+      toast.error('Failed to process image. Please try again.')
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
 
-    if (isDuplicate) {
+    // Check if hash already exists in stored hashes or current session hashes
+    const allExistingHashes = [...existingPhotoHashes, ...formData.photoHashes]
+    const isDuplicateHash = allExistingHashes.includes(fileHash)
+
+    if (isDuplicateHash) {
       toast.error(
         'You dirty dog 😏, you can\'t use the same photo!',
         {
@@ -394,12 +422,72 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
       return
     }
 
-    // Create URL for the cropper
+    // Check if it's a duplicate file by name/size (fallback check)
+    const isDuplicateFile = formData.photos.some(existingFile => 
+      existingFile.name === file.name && existingFile.size === file.size
+    )
+
+    if (isDuplicateFile) {
+      toast.error(
+        'You dirty dog 😏, you can\'t use the same photo!',
+        {
+          duration: 3000,
+          position: 'top-center',
+          style: {
+            background: '#1F2937',
+            color: '#fff',
+            border: '1px solid #374151',
+          },
+          icon: '🐕',
+        }
+      )
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
+    // Check against existing uploaded photos by comparing file content
     const reader = new FileReader()
     reader.onload = () => {
-      setCropImage(reader.result as string)
+      const newFileDataUrl = reader.result as string
+      
+      // Check if this data URL matches any existing photo preview
+      const isDuplicateContent = photoPreviews.some(existingPreview => {
+        // For data URLs, compare the base64 content part
+        if (existingPreview.startsWith('data:')) {
+          return existingPreview === newFileDataUrl
+        }
+        return false
+      })
+
+      if (isDuplicateContent) {
+        toast.error(
+          'You dirty dog 😏, you can\'t use the same photo!',
+          {
+            duration: 3000,
+            position: 'top-center',
+            style: {
+              background: '#1F2937',
+              color: '#fff',
+              border: '1px solid #374151',
+            },
+            icon: '🐕',
+          }
+        )
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+        return
+      }
+
+      // If no duplicate found, proceed with cropping and store the hash
+      setCropImage(newFileDataUrl)
       setTempFile(file)
       setCropModalOpen(true)
+      
+      // Store the hash for this file temporarily (will be added to formData after cropping)
+      setTempFile(Object.assign(file, { hash: fileHash }))
     }
     reader.readAsDataURL(file)
 
@@ -421,6 +509,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
       setFormData((prev) => ({
         ...prev,
         photos: prev.photos.filter((_, i) => i !== fileIndex),
+        photoHashes: prev.photoHashes.filter((_, i) => i !== fileIndex), // Also remove corresponding hash
       }))
     }
   }
@@ -577,18 +666,30 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
 
       // Upload only the new photo files and get their Firebase URLs
       const uploadedPhotoUrls: string[] = []
+      const uploadedPhotoHashes: string[] = []
       for (let i = 0; i < formData.photos.length; i++) {
         const file = formData.photos[i]
         const photoStorageRef = ref(storage, `photos/${userEmail}_${Date.now()}_${i}`)
         await uploadBytes(photoStorageRef, file)
         const url = await getDownloadURL(photoStorageRef)
         uploadedPhotoUrls.push(url)
+        
+        // Get the corresponding hash (should be at the same index)
+        if (formData.photoHashes[i]) {
+          uploadedPhotoHashes.push(formData.photoHashes[i])
+        }
       }
 
       // Combine existing photo URLs with new uploads
       const allPhotoUrls = [
         ...photoPreviews.filter(url => url.startsWith('http')), // Keep existing URLs
         ...uploadedPhotoUrls // Add new uploads
+      ]
+
+      // Combine existing photo hashes with new hashes
+      const allPhotoHashes = [
+        ...existingPhotoHashes, // Keep existing hashes
+        ...uploadedPhotoHashes // Add new hashes
       ]
 
       // Flatten skills for compatibility with existing code
@@ -609,6 +710,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
         lookingFor: formData.interests, // Keep for compatibility
         avatarUrl,
         photos: allPhotoUrls,
+        photoHashes: allPhotoHashes, // Save hashes
         description: formData.description,
         github: formData.github,
         linkedin: formData.linkedin,
@@ -731,25 +833,102 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
       const croppedBlob = await getCroppedImg(cropImage, croppedAreaPixels)
       const croppedFile = new File([croppedBlob], tempFile.name, { type: 'image/jpeg' })
 
-      // Add to formData and create preview
-      setFormData(prev => ({
-        ...prev,
-        photos: [...prev.photos, croppedFile],
-      }))
+      // Generate hash for the cropped image
+      let croppedFileHash: string
+      try {
+        croppedFileHash = await generateFileHash(croppedFile)
+      } catch (error) {
+        console.error('Error generating hash for cropped image:', error)
+        toast.error('Failed to process cropped image. Please try again.')
+        return
+      }
 
-      // Create preview for the cropped image
+      // Check if the cropped image hash already exists
+      const allExistingHashes = [...existingPhotoHashes, ...formData.photoHashes]
+      const isDuplicateHash = allExistingHashes.includes(croppedFileHash)
+
+      if (isDuplicateHash) {
+        toast.error(
+          'You dirty dog 😏, you can\'t use the same photo!',
+          {
+            duration: 3000,
+            position: 'top-center',
+            style: {
+              background: '#1F2937',
+              color: '#fff',
+              border: '1px solid #374151',
+            },
+            icon: '🐕',
+          }
+        )
+        // Close modal and reset crop state without adding the image
+        setCropModalOpen(false)
+        setCropImage(null)
+        setTempFile(null)
+        setCrop({ x: 0, y: 0 })
+        setZoom(1)
+        return
+      }
+
+      // Check for duplicates of the cropped image by content (fallback)
       const reader = new FileReader()
       reader.onload = (e) => {
-        setPhotoPreviews(prev => [...prev, e.target?.result as string])
+        const croppedDataUrl = e.target?.result as string
+        
+        // Check if this cropped image matches any existing photo
+        const isDuplicateContent = photoPreviews.some(existingPreview => {
+          if (existingPreview.startsWith('data:')) {
+            return existingPreview === croppedDataUrl
+          }
+          return false
+        })
+
+        // Also check against files in formData by comparing file properties (fallback)
+        const isDuplicateFile = formData.photos.some(existingFile => 
+          existingFile.name === croppedFile.name && 
+          existingFile.size === croppedFile.size
+        )
+
+        if (isDuplicateContent || isDuplicateFile) {
+          toast.error(
+            'You dirty dog 😏, you can\'t use the same photo!',
+            {
+              duration: 3000,
+              position: 'top-center',
+              style: {
+                background: '#1F2937',
+                color: '#fff',
+                border: '1px solid #374151',
+              },
+              icon: '🐕',
+            }
+          )
+          // Close modal and reset crop state without adding the image
+          setCropModalOpen(false)
+          setCropImage(null)
+          setTempFile(null)
+          setCrop({ x: 0, y: 0 })
+          setZoom(1)
+          return
+        }
+
+        // If no duplicate found, add to formData with hash and create preview
+        setFormData(prev => ({
+          ...prev,
+          photos: [...prev.photos, croppedFile],
+          photoHashes: [...prev.photoHashes, croppedFileHash], // Add hash to tracking
+        }))
+
+        setPhotoPreviews(prev => [...prev, croppedDataUrl])
+
+        // Close modal and reset crop state
+        setCropModalOpen(false)
+        setCropImage(null)
+        setTempFile(null)
+        setCrop({ x: 0, y: 0 })
+        setZoom(1)
       }
       reader.readAsDataURL(croppedFile)
-
-      // Close modal and reset crop state
-      setCropModalOpen(false)
-      setCropImage(null)
-      setTempFile(null)
-      setCrop({ x: 0, y: 0 })
-      setZoom(1)
     } catch (error) {
       console.error('Error cropping image:', error)
       toast.error('Failed to crop image. Please try again.')
