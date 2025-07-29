@@ -36,10 +36,12 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
   const [photoIdx, setPhotoIdx] = useState(0);
   const [isPressed, setIsPressed] = useState(false);
   const [pressStart, setPressStart] = useState({ x: 0, y: 0, time: 0 });
+  const [swipeHint, setSwipeHint] = useState<'left' | 'right' | null>(null);
   const holdTimer = useRef<NodeJS.Timeout | null>(null);
 
   const resetState = () => {
     setIsPressed(false);
+    setSwipeHint(null);
     if (holdTimer.current) {
       clearTimeout(holdTimer.current);
       holdTimer.current = null;
@@ -62,6 +64,23 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
       });
       (e.target as HTMLElement).dispatchEvent(newEvent);
     }, HOLD_MS);
+  };
+
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isPressed) return;
+    
+    const deltaX = clientX - pressStart.x;
+    const deltaY = Math.abs(clientY - pressStart.y);
+    
+    // Only show hints if horizontal movement is significant and not too much vertical movement
+    if (Math.abs(deltaX) > 20 && deltaY < 50) {
+      const newHint = deltaX > 0 ? 'right' : 'left';
+      if (newHint !== swipeHint) {
+        setSwipeHint(newHint);
+      }
+    } else if (Math.abs(deltaX) < 10) {
+      setSwipeHint(null);
+    }
   };
 
   const handleEnd = (clientX: number, clientY: number) => {
@@ -119,11 +138,16 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
     <div
       className="profile-card relative w-full aspect-[3/4] max-w-[400px] max-h-[600px] mx-auto rounded-xl overflow-hidden bg-gray-900 shadow-lg will-change-transform select-none"
       onMouseDown={(e) => handleStart(e.clientX, e.clientY, e)}
+      onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
       onMouseUp={(e) => handleEnd(e.clientX, e.clientY)}
       onMouseLeave={resetState}
       onTouchStart={(e) => {
         const touch = e.touches[0];
         handleStart(touch.clientX, touch.clientY, e);
+      }}
+      onTouchMove={(e) => {
+        const touch = e.touches[0];
+        handleMove(touch.clientX, touch.clientY);
       }}
       onTouchEnd={(e) => {
         const touch = e.changedTouches[0];
@@ -160,6 +184,25 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
               <li key={i} className={`flex-1 h-0.5 rounded-full ${i === photoIdx ? 'bg-white' : 'bg-white/30'}`} />
             ))}
           </ul>
+          
+          {/* Swipe Hint Overlays */}
+          {swipeHint === 'left' && (
+            <div className="absolute inset-0 bg-red-500/70 flex items-center justify-center z-20 transition-all duration-300 ease-out animate-in fade-in">
+              <div className="bg-red-500/90 backdrop-blur-sm rounded-2xl px-8 py-4 flex items-center gap-3 shadow-xl">
+                <XMarkIcon className="w-8 h-8 text-white" />
+                <span className="text-white text-2xl font-bold tracking-wider">NOPE</span>
+              </div>
+            </div>
+          )}
+          
+          {swipeHint === 'right' && (
+            <div className="absolute inset-0 bg-emerald-500/70 flex items-center justify-center z-20 transition-all duration-300 ease-out animate-in fade-in">
+              <div className="bg-emerald-500/90 backdrop-blur-sm rounded-2xl px-8 py-4 flex items-center gap-3 shadow-xl">
+                <HeartIcon className="w-8 h-8 text-white" />
+                <span className="text-white text-2xl font-bold tracking-wider">LIKE</span>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <div className="w-full h-full bg-gray-800 flex items-center justify-center">
@@ -315,7 +358,20 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
         </div>
       </div>
       {isActive && (
-        <div className="absolute left-1/2 -translate-x-1/2 z-30" style={{ bottom: -70 }}>
+        <div className="absolute left-1/2 -translate-x-1/2 z-30" style={{ bottom: -90 }}>
+          {/* Direction Labels */}
+          <div className="flex items-center justify-between px-2 mb-3">
+            <div className="text-center">
+              <div className="text-red-400 text-sm font-semibold mb-1">← PASS</div>
+              <div className="text-red-400/60 text-xs">Swipe left</div>
+            </div>
+            <div className="text-center">
+              <div className="text-emerald-400 text-sm font-semibold mb-1">LIKE →</div>
+              <div className="text-emerald-400/60 text-xs">Swipe right</div>
+            </div>
+          </div>
+          
+          {/* Action Buttons */}
           <div className="flex items-center justify-center gap-8 h-14 px-6 rounded-full backdrop-blur-md bg-white/10 shadow-lg border border-white/10" style={{ minWidth: 200 }}>
             <button
               aria-label="Reject"
