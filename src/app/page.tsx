@@ -1345,7 +1345,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-          <div className="relative flex flex-col items-center z-10" style={{ minHeight: 570, height: 570, width: '100%' }}>
+          <div className="relative flex flex-col items-center z-10" style={{ minHeight: 590, height: 590, width: '100%' }}>
             {/* Render the next card underneath, if it exists */}
             {filteredProfiles[current + 1] && showNextCard && (
               <div
