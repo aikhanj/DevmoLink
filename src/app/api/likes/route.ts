@@ -33,7 +33,21 @@ export async function GET() {
         id: secureId, // Use secure ID instead of email
         name: profileData.name,
         age: profileData.age,
+        gender: profileData.gender,
+        timezone: profileData.timezone,
+        description: profileData.description,
+        professions: profileData.professions || [],
+        skills: profileData.skills || {},
+        experienceLevel: profileData.experienceLevel,
+        interests: profileData.interests || [],
+        tools: profileData.tools || [],
+        programmingLanguages: profileData.programmingLanguages || [],
+        themes: profileData.themes || [],
         avatarUrl: profileData.avatarUrl ? `/api/photos/secure/${secureId}/avatar` : null,
+        // Add photos array with secure URLs
+        photos: ((profileData.photos as string[]) || []).map((photo: string, index: number) => 
+          `/api/photos/secure/${secureId}/${index}`
+        ),
         // Remove email and other sensitive fields
       });
     } else {
@@ -41,7 +55,8 @@ export async function GET() {
       const secureId = getSecureIdForEmail(email);
       profiles.push({ 
         id: secureId,
-        name: "Unknown User" // Don't expose email even in fallback
+        name: "Unknown User", // Don't expose email even in fallback
+        photos: [] // Add empty photos array for consistency
       });
     }
   }
