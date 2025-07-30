@@ -79,7 +79,24 @@ async function hasPhotoAccess(viewerEmail: string, targetEmail: string): Promise
     return true; // Target user has liked current user = current user can view photos
   }
   
-  return false; // Left swipe or other restriction
+
+  // ADDITIONAL: Allow viewing photos if the target user has liked the current user
+  // This enables photo viewing in the "likes" page before current user responds
+  const likesQuery = query(
+    collection(db, "swipes"),
+    where("from", "==", targetEmail),
+    where("to", "==", viewerEmail),
+    where("direction", "==", "right")
+  );
+  const likesSnapshot = await getDocs(likesQuery);
+  
+  if (!likesSnapshot.empty) {
+    // Target user has liked viewer = viewer can see their photos to decide
+    return true;
+  }
+  
+  return false; // Default: no access (already swiped or other restriction)
+
 }
 
 export async function GET(

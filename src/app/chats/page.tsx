@@ -127,9 +127,9 @@ export default function ChatsPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">
-      <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">Chats</h2>
-      <div className="w-full max-w-md mx-auto space-y-8">
+    <div className="w-full flex flex-col items-center py-4 px-4">
+      <h2 className="text-2xl font-bold text-[#00FFAB] mb-6 tracking-tight font-mono text-center">Chats</h2>
+      <div className="w-full max-w-md mx-auto space-y-6 flex-1">
                  {/* Admin buttons - only show in development or to admin users */}
          {isAdminMode && (
          <>

@@ -5,12 +5,28 @@ import { useEffect, useState, useContext } from "react";
 import { LoadingContext } from "../MainLayout";
 import dynamic from 'next/dynamic';
 import { useRouter } from "next/navigation";
+import { toast } from 'react-hot-toast';
 
 interface Profile {
-  id: string;
+  id: string; // This is the secure ID, not email
   name: string;
-  email: string;
-  // Add other fields as needed
+  email?: string; // Optional, not returned by API for security
+  age?: number;
+  gender?: string;
+  timezone?: string;
+  description?: string;
+  professions?: string[];
+  skills?: {
+    languages?: string[];
+    frameworks?: string[];
+  };
+  experienceLevel?: string;
+  interests?: string[];
+  tools?: string[];
+  programmingLanguages?: string[];
+  themes?: string[];
+  avatarUrl?: string;
+  photos?: string[];
 }
 
 const ProfileCard = dynamic(() => import('../components/ProfileCard'), { ssr: false });
@@ -88,9 +104,9 @@ export default function LikesPage() {
   if (!session) return null;
   
   return (
-    <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">
-      <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">Who Likes You</h2>
-      <div className="w-full max-w-md mx-auto space-y-4">
+    <div className="w-full flex flex-col items-center py-4 px-4">
+      <h2 className="text-2xl font-bold text-[#00FFAB] mb-6 tracking-tight font-mono text-center">Who Likes You</h2>
+      <div className="w-full max-w-md mx-auto space-y-4 flex-1">
         {whoLikesMe.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="text-5xl mb-4">💔</div>
@@ -136,10 +152,10 @@ export default function LikesPage() {
 
       {/* Profile Modal */}
       {selectedProfile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-[#18181b] rounded-2xl shadow-2xl p-6 max-w-md w-full relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setSelectedProfile(null)}>
+          <div className="bg-[#18181b] rounded-2xl shadow-2xl p-6 max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-white text-2xl"
+              className="absolute top-0 right-0 text-gray-400 hover:text-white text-3xl z-50 w-10 h-10"
               onClick={() => setSelectedProfile(null)}
               aria-label="Close"
             >
@@ -147,24 +163,35 @@ export default function LikesPage() {
             </button>
             <ProfileCard profile={{
               ...selectedProfile,
-              photos: Array.isArray(((selectedProfile as unknown) as Record<string, unknown>).photos)
-                ? (((selectedProfile as unknown) as Record<string, unknown>).photos as string[])
-                : []
-            }} onSwipe={() => {}} isActive={true} />
+              photos: selectedProfile.photos || []
+            }} onSwipe={() => {}} isActive={false} />
             <div className="flex gap-4 mt-6 justify-center">
               <button
                 className="px-6 py-2 rounded-full bg-red-500 text-white font-bold hover:bg-red-600 transition"
                 disabled={actionLoading}
                 onClick={async () => {
                   setActionLoading(true);
-                  await fetch('/api/swipes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ to: selectedProfile.email, direction: 'left' })
-                  });
-                  setActionLoading(false);
-                  setSelectedProfile(null);
-                  setWhoLikesMe(whoLikesMe.filter(p => p.id !== selectedProfile.id));
+                  try {
+                    const response = await fetch('/api/swipes', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ to: selectedProfile.id, direction: 'left' })
+                    });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                      toast.success(`👋 You passed on ${selectedProfile.name}`);
+                      setSelectedProfile(null);
+                      setWhoLikesMe(whoLikesMe.filter(p => p.id !== selectedProfile.id));
+                    } else {
+                      toast.error(result.error || 'Failed to reject');
+                    }
+                  } catch (error) {
+                    console.error('Error rejecting:', error);
+                    toast.error('Something went wrong. Please try again.');
+                  } finally {
+                    setActionLoading(false);
+                  }
                 }}
               >
                 Reject
@@ -174,14 +201,43 @@ export default function LikesPage() {
                 disabled={actionLoading}
                 onClick={async () => {
                   setActionLoading(true);
-                  await fetch('/api/swipes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ to: selectedProfile.email, direction: 'right' })
-                  });
-                  setActionLoading(false);
-                  setSelectedProfile(null);
-                  setWhoLikesMe(whoLikesMe.filter(p => p.id !== selectedProfile.id));
+                  try {
+                    const response = await fetch('/api/swipes', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ to: selectedProfile.id, direction: 'right' })
+                    });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                      if (result.matched) {
+                        // Show match toast and navigate to chat
+                        toast.success(`🎉 It's a Match! You and ${selectedProfile.name} liked each other!`, {
+                          duration: 4000,
+                        });
+                        
+                        // Navigate to chat with this person using the email returned from API
+                        if (result.matchedUserEmail) {
+                          router.push(`/chats/${encodeURIComponent(result.matchedUserEmail)}`);
+                        }
+                      } else {
+                        // Just liked them, not a match yet
+                        toast.success(`💕 You liked ${selectedProfile.name}! Waiting for them to like you back.`, {
+                          duration: 3000,
+                        });
+                      }
+                      
+                      setSelectedProfile(null);
+                      setWhoLikesMe(whoLikesMe.filter(p => p.id !== selectedProfile.id));
+                    } else {
+                      toast.error(result.error || 'Failed to send like');
+                    }
+                  } catch (error) {
+                    console.error('Error sending like:', error);
+                    toast.error('Something went wrong. Please try again.');
+                  } finally {
+                    setActionLoading(false);
+                  }
                 }}
               >
                 Match

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, createContext } from "react";
-import { Settings, Flame, Heart, MessageCircle, User, Compass } from "lucide-react";
+import { Settings, Flame, Heart, MessageCircle, User } from "lucide-react";
 import Link from "next/link";
 // import { Dialog } from "@headlessui/react"; // Unused
 import { signOut, useSession, signIn } from "next-auth/react";
@@ -16,7 +16,6 @@ const navItems = [
   { href: "/likes", label: "Likes", icon: Heart },
   { href: "/chats", label: "Chats", icon: MessageCircle },
   { href: "/profile", label: "Profile", icon: User },
-  { href: "/explore", label: "Explore", icon: Compass },
 ];
 
 // Global loading context
@@ -63,7 +62,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   return (
     <LoadingContext.Provider value={{ loading, setLoading }}>
       <MiniAppWrapper>
-        <div className={`min-h-screen ${isSecurityAuditPage ? 'flex flex-col' : 'grid grid-rows-[auto_1fr]'} bg-[#030712] dark relative ${isSecurityAuditPage ? 'overflow-y-auto' : ''}`}>
+        <div className={`min-h-screen ${isSecurityAuditPage ? 'flex flex-col' : 'grid grid-rows-[auto_1fr]'} bg-[#030712] dark relative overflow-x-hidden ${isSecurityAuditPage ? 'overflow-y-auto' : ''}`}>
         {/* Global SVG grid background overlay */}
         <div className="pointer-events-none fixed inset-0 z-0 opacity-10">
           <svg width="100%" height="100%" className="absolute inset-0" style={{ minHeight: '100vh' }}>
@@ -117,7 +116,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         
         {/* Mobile Header - only logo and settings */}
         {!hideHeader && (
-          <header className="flex items-center justify-between px-4 py-3 h-14 md:hidden">
+          <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 h-14 bg-[#030712]/90 backdrop-blur-md border-b border-[#00FFAB]/20 md:hidden">
             <button 
             onClick={() => router.push('/')} 
             className="font-bold text-xl text-[#00FFAB] select-none">
@@ -142,8 +141,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </main>
         ) : (
           /* Regular pages with centering and constraints */
-          <main className={`h-full flex flex-col items-center justify-center w-full px-2 pb-20 md:pb-8 md:pt-16 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-            <div className="w-full max-w-md mx-auto">
+          <main className={`min-h-screen flex flex-col items-center justify-center w-full px-2 pb-20 pt-16 md:pb-8 md:pt-16 transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'} mobile-safe`}>
+            <div className="w-full max-w-md mx-auto flex-1 flex flex-col justify-center">
               {children}
             </div>
           </main>

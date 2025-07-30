@@ -144,9 +144,10 @@ export default function ChatThreadPage() {
   }
 
   return (
-    <div className="h-screen w-full bg-[#030712] flex flex-col !h-[calc(100vh-64px)] mt-16"> 
-      {/* Header */}
-      <div className="flex items-center gap-4 px-4 py-3 bg-[#18181b] shadow">
+    <div className="min-h-screen w-full bg-[#030712] flex flex-col"> 
+      {/* Header - Normal flow positioning */}
+      <div className="bg-[#030712] border-b-2 border-[#00FFAB] py-6 px-4" style={{ paddingTop: 'max(24px, calc(24px + env(safe-area-inset-top)))' }}>
+        <div className="flex items-center gap-4">
         <button onClick={() => router.back()} aria-label="Back" className="text-[#00FFAB]">
           <ArrowLeft className="w-6 h-6" />
         </button>
@@ -172,10 +173,11 @@ export default function ChatThreadPage() {
             🔒 <span>Encrypted</span>
           </div>
         </div>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 mobile-scroll">
         {messages.map((msg) => {
           const isMe = msg.from === session.user?.email;
           
@@ -214,7 +216,7 @@ export default function ChatThreadPage() {
       </div>
 
       {/* Input */}
-      <div className="px-4 py-3 bg-[#18181b] flex items-center gap-2">
+      <div className="px-4 py-4 bg-[#18181b] border-t border-[#00FFAB]/20 flex items-center gap-2" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
         <input
           type="text"
           placeholder="Type your message... (encrypted)"

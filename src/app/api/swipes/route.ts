@@ -95,7 +95,26 @@ export async function POST(req: Request) {
     return Boolean(profile[field]);
   });
   if (!isProfileComplete) {
-    return NextResponse.json({ error: "Complete your profile before swiping." }, { status: 400 });
+    // Debug: Log which fields are missing
+    const missingFields = requiredFields.filter(field => {
+      if (field === "skills") {
+        const skills = profile[field];
+        if (!skills || typeof skills !== "object") return true;
+        return !Object.values(skills).some(category => 
+          Array.isArray(category) && category.length > 0
+        );
+      }
+      if (Array.isArray(profile[field])) {
+        return profile[field].length === 0;
+      }
+      return !Boolean(profile[field]);
+    });
+    
+    console.error("Profile incomplete for user:", from, "Missing fields:", missingFields);
+    return NextResponse.json({ 
+      error: "Complete your profile before swiping.", 
+      missingFields 
+    }, { status: 400 });
   }
 
   await addDoc(collection(db, "swipes"), {
@@ -130,7 +149,11 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ success: true, matched });
+  return NextResponse.json({ 
+    success: true, 
+    matched,
+    matchedUserEmail: matched ? toEmail : undefined 
+  });
 }
 
 export async function GET(_req: Request) {
