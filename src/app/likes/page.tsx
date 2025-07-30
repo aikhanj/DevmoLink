@@ -36,8 +36,31 @@ export default function LikesPage() {
     setLocalLoading(true);
     fetch("/api/likes")
       .then(res => res.json())
-      .then(data => {
+      .then(async (data) => {
         setWhoLikesMe(data);
+        
+        // Preload all avatar images before showing the page
+        const preloadPromises = data.map((profile: any) => {
+          return new Promise<void>((resolve) => {
+            const p = profile as { photos?: string[] };
+            if (Array.isArray(p.photos) && p.photos.length > 0) {
+              const img = new Image();
+              img.onload = () => resolve();
+              img.onerror = () => resolve(); // Still resolve to not block the UI
+              img.src = p.photos[0]; // First photo used as avatar
+            } else {
+              resolve(); // No photo to load
+            }
+          });
+        });
+        
+        // Wait for all avatars to load
+        await Promise.all(preloadPromises);
+        
+        setLocalLoading(false);
+        setLoading(false);
+      })
+      .catch(() => {
         setLocalLoading(false);
         setLoading(false);
       });
