@@ -2,17 +2,17 @@ import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/authOptions";
 import { db } from "../../../../firebase";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { getSecureIdForEmail, getEmailFromSecureId } from "../../../utils/secureId";
 
-export async function GET(request: NextRequest, { params }: { params: { email: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ email: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const currentUserEmail = session.user.email;
-  const { email: emailOrSecureId } = params;
+  const { email: emailOrSecureId } = await params;
 
   try {
     let targetEmail: string;
