@@ -144,9 +144,10 @@ export default function ChatThreadPage() {
   }
 
   return (
-    <div className="h-screen w-full bg-[#030712] flex flex-col chat-container"> 
-      {/* Header - Fixed positioning for better mobile experience */}
-      <div className="fixed top-0 left-0 right-0 z-30 flex items-center gap-4 px-4 py-3 bg-[#18181b] shadow-lg border-b border-[#00FFAB]/20">
+    <div className="min-h-screen w-full bg-[#030712] flex flex-col"> 
+      {/* Header - Simple fixed positioning */}
+      <div className="sticky top-0 left-0 right-0 z-30 bg-[#030712] border-b-2 border-[#00FFAB] py-4 px-4">
+        <div className="flex items-center gap-4" style={{ marginTop: 'max(0px, env(safe-area-inset-top))' }}>
         <button onClick={() => router.back()} aria-label="Back" className="text-[#00FFAB]">
           <ArrowLeft className="w-6 h-6" />
         </button>
@@ -172,10 +173,11 @@ export default function ChatThreadPage() {
             🔒 <span>Encrypted</span>
           </div>
         </div>
+        </div>
       </div>
 
-      {/* Messages - Add top padding to account for fixed header */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 pt-20 pb-24 mobile-scroll">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 mobile-scroll">
         {messages.map((msg) => {
           const isMe = msg.from === session.user?.email;
           
@@ -213,8 +215,8 @@ export default function ChatThreadPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input - Fixed at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-[#18181b] border-t border-[#00FFAB]/20 flex items-center gap-2">
+      {/* Input */}
+      <div className="sticky bottom-0 left-0 right-0 z-30 px-4 py-4 bg-[#18181b] border-t border-[#00FFAB]/20 flex items-center gap-2" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
         <input
           type="text"
           placeholder="Type your message... (encrypted)"

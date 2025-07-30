@@ -90,7 +90,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
     }
   };
 
-  const handleEnd = (clientX: number, clientY: number) => {
+  const handleEnd = (clientX: number, clientY: number, e?: React.MouseEvent | React.TouchEvent) => {
     if (!isPressed) return;
     
     const timeDiff = Date.now() - pressStart.time;
@@ -101,6 +101,12 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
     
     // Photo switching for quick taps with minimal movement (works for all cards)
     if (timeDiff < HOLD_MS && deltaX < 10 && deltaY < 10) {
+      // Prevent event bubbling for photo navigation clicks
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      
       const rect = document.querySelector('.profile-card')?.getBoundingClientRect();
       if (rect) {
         const clickX = clientX - rect.left;
@@ -144,7 +150,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
       }}
       onMouseDown={(e) => handleStart(e.clientX, e.clientY, e)}
       onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
-      onMouseUp={(e) => handleEnd(e.clientX, e.clientY)}
+      onMouseUp={(e) => handleEnd(e.clientX, e.clientY, e)}
       onMouseLeave={resetState}
       onTouchStart={(e) => {
         const touch = e.touches[0];
@@ -156,7 +162,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
       }}
       onTouchEnd={(e) => {
         const touch = e.changedTouches[0];
-        handleEnd(touch.clientX, touch.clientY);
+        handleEnd(touch.clientX, touch.clientY, e);
       }}
     >
       {photos && photos.length > 0 ? (

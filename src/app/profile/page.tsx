@@ -99,7 +99,7 @@ export default function ProfilePage() {
   if (!session) return null;
 
   return (
-    <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">
+    <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4 justify-center">
       <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">My Profile</h2>
       <div className="flex flex-col items-center gap-6 mb-8">
         {profile?.avatarUrl ? (
