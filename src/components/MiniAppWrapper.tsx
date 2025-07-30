@@ -17,7 +17,7 @@ export function MiniAppWrapper({
   errorFallback,
   loadingFallback 
 }: MiniAppWrapperProps) {
-  const { isLoading, isReady, error, isInFrame } = useFarcaster();
+  const { isLoading, isReady: _isReady, error, isInFrame } = useFarcaster();
   const { isInMiniApp, contextType } = useMiniAppContext();
 
   // Loading state
@@ -98,7 +98,7 @@ function DefaultErrorState({ error }: { error: FarcasterError }) {
   );
 }
 
-function DefaultFallbackState() {
+function _DefaultFallbackState() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center max-w-md mx-auto p-6">

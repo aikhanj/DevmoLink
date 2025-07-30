@@ -16,11 +16,11 @@ interface ChatProfile {
 export default function ChatsPage() {
   const { data: session, status } = useSession();
   const [chats, setChats] = useState<ChatProfile[]>([]);
-  const [localLoading, setLocalLoading] = useState(true);
+  const [_localLoading, setLocalLoading] = useState(true);
   const { setLoading } = useContext(LoadingContext);
   const router = useRouter();
   // Testing mode flag – mirrors logic on the Home page
-  const isTestingMode = process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === "true" ||
+  const _isTestingMode = process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === "true" ||
     (process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === undefined && process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true");
   
   // 🔒 ADMIN MODE - Only show dangerous buttons to specific admin users
@@ -98,7 +98,7 @@ export default function ChatsPage() {
       setLocalLoading(false);
       setLoading(false);
     });
-  }, [session]);
+  }, [session, setLoading]);
 
   useEffect(() => {
     if (status !== "loading" && !session) {

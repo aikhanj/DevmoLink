@@ -1,13 +1,11 @@
 "use client";
-import { useEffect, useState, useCallback, useContext, useRef, RefObject } from "react";
+import { useEffect, useState, useCallback, useContext, useRef } from "react";
 import TinderCard from "react-tinder-card";
 // Cast to any to allow passing untyped props like flickDuration
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const AnyTinderCard = TinderCard as any;
-import AuthButton from "./AuthButton";
 import dynamic from 'next/dynamic';
-import { XMarkIcon, HeartIcon } from '@heroicons/react/24/solid';
-import { useRouter } from "next/navigation";
+
 const ProfileCard = dynamic(() => import('./components/ProfileCard'), { ssr: false });
 import { useSession, signIn } from "next-auth/react";
 import { LoadingContext } from "./MainLayout";
@@ -79,24 +77,11 @@ async function fetchProfiles(excludeIds: string[] = [], limit: number = 3) {
   }
 }
 
-function useTypingEffect(text: string, speed = 30) {
-  const [displayed, setDisplayed] = useState("");
-  useEffect(() => {
-    setDisplayed("");
-    let i = 0;
-    const interval = setInterval(() => {
-      setDisplayed((prev) => text.slice(0, i + 1));
-      i++;
-      if (i >= text.length) clearInterval(interval);
-    }, speed);
-    return () => clearInterval(interval);
-  }, [text, speed]);
-  return displayed;
-}
+
 
 export default function Home() {
   const { data: session, status } = useSession();
-  const router = useRouter();
+
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [swipedIds, setSwipedIds] = useState<string[]>([]);
   const [hasMoreProfiles, setHasMoreProfiles] = useState(true);
@@ -1185,7 +1170,8 @@ export default function Home() {
         // Don't clear loading here - let loadInitialProfiles handle it after preloading
       });
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setLoading]); // MOCK_PROFILES is a static constant that doesn't need to be in dependencies
 
   // Filter out already-swiped profiles (current user is already excluded by backend)
   const filteredProfiles = (Array.isArray(profiles) ? profiles : []).filter(
@@ -1243,11 +1229,12 @@ export default function Home() {
 
   // Cleanup preloaded images on unmount to prevent memory leaks
   useEffect(() => {
+    const preloadedImagesRef = preloadedImages.current;
     return () => {
-      preloadedImages.current.forEach((img) => {
+      preloadedImagesRef.forEach((img) => {
         img.src = ''; // Free memory
       });
-      preloadedImages.current.clear();
+      preloadedImagesRef.clear();
     };
   }, []);
 
@@ -1291,7 +1278,7 @@ export default function Home() {
         setSwipedIds((prev) => [...prev, showProfile.id]);
       }
     },
-    [showProfile, router]
+    [showProfile]
   );
 
   const mainHeadline1 = "Welcome to";

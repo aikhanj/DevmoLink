@@ -1,8 +1,6 @@
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Flame, Heart, MessageCircle, User, Compass, Settings } from 'lucide-react';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { Flame, Heart, MessageCircle, User, Settings } from 'lucide-react';
 
 
 const navItems = [

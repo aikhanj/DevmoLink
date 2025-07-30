@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useFarcaster } from './FarcasterProvider';
-import { AuthSession, FarcasterUser } from '@/types/farcaster';
+import { AuthSession } from '@/types/farcaster';
+// FarcasterUser imported but unused
 
 interface FarcasterAuthProps {
   onAuthSuccess?: (session: AuthSession) => void;

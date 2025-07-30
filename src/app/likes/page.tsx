@@ -1,6 +1,6 @@
 "use client";
 import { Heart } from "lucide-react";
-import { useSession, signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useEffect, useState, useContext } from "react";
 import { LoadingContext } from "../MainLayout";
 import dynamic from 'next/dynamic';
@@ -40,7 +40,7 @@ export default function LikesPage() {
         setWhoLikesMe(data);
         
         // Preload all avatar images before showing the page
-        const preloadPromises = data.map((profile: any) => {
+        const preloadPromises = data.map((profile: Profile) => {
           return new Promise<void>((resolve) => {
             const p = profile as { photos?: string[] };
             if (Array.isArray(p.photos) && p.photos.length > 0) {
@@ -75,7 +75,7 @@ export default function LikesPage() {
     return () => {
               window.removeEventListener('devmolink:match', handleMatch as EventListener);
     };
-  }, [session]);
+  }, [session, setLoading]);
   
   if (status === "loading" || localLoading) {
     return (

@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { db, storage } from "../firebase"
 import { doc, getDoc, setDoc } from "firebase/firestore"
@@ -1180,7 +1179,7 @@ export default function CreateProfile({ onClose, hideClose = false, mode = 'crea
                     <GripVertical className="w-4 h-4 text-white" />
                   </div>
                   <button
-                    onClick={(e) => {
+                    onClick={(_e) => {
                       removePhoto(index)
                     }}
                     className="absolute top-1 right-1 z-20 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"

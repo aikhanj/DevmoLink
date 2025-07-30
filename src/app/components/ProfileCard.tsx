@@ -30,7 +30,7 @@ interface ProfileCardProps {
 }
 
 const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe }) => {
-  const { name, age, programmingLanguages = [], themes = [], timezone, photos: rawPhotos = [], description } = profile;
+  const { name, age, programmingLanguages = [], photos: rawPhotos = [], description } = profile;
   
   const photos = Array.from(new Set(rawPhotos.filter(Boolean)));
   const [photoIdx, setPhotoIdx] = useState(0);

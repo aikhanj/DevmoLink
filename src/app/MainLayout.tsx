@@ -1,8 +1,8 @@
 "use client";
-import React, { useState, createContext, useContext } from "react";
+import React, { useState, createContext } from "react";
 import { Settings, Flame, Heart, MessageCircle, User, Compass } from "lucide-react";
 import Link from "next/link";
-import { Dialog } from "@headlessui/react";
+// import { Dialog } from "@headlessui/react"; // Unused
 import { signOut, useSession, signIn } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -27,8 +27,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const { data: session } = useSession();
   const pathname = usePathname();
   const router = useRouter();
-  const { theme = 'light', setTheme } = useTheme();
-  const [notifications, setNotifications] = useState(true);
+  const { theme: _theme = 'light', setTheme: _setTheme } = useTheme();
+  const [_notifications, _setNotifications] = useState(true);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<{ name?: string; avatarUrl?: string } | null>(null);
 

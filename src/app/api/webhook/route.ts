@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  FarcasterWebhookEvent, 
-  FarcasterEventType
+  FarcasterWebhookEvent
+  // FarcasterEventType // Unused
 } from '@/types/farcaster';
 import { createFarcasterError } from '@/lib/farcaster';
 
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
     let event: FarcasterWebhookEvent;
     try {
       event = JSON.parse(body);
-    } catch (parseError) {
+    } catch {
       return NextResponse.json(
         createFarcasterError('INVALID_JSON', 'Invalid JSON in webhook body'),
         { status: 400 }
