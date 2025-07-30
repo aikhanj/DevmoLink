@@ -145,9 +145,9 @@ export default function ChatThreadPage() {
 
   return (
     <div className="min-h-screen w-full bg-[#030712] flex flex-col"> 
-      {/* Header - Simple fixed positioning */}
-      <div className="sticky top-0 left-0 right-0 z-30 bg-[#030712] border-b-2 border-[#00FFAB] py-4 px-4">
-        <div className="flex items-center gap-4" style={{ marginTop: 'max(0px, env(safe-area-inset-top))' }}>
+      {/* Header - Normal flow positioning */}
+      <div className="bg-[#030712] border-b-2 border-[#00FFAB] py-6 px-4" style={{ paddingTop: 'max(24px, calc(24px + env(safe-area-inset-top)))' }}>
+        <div className="flex items-center gap-4">
         <button onClick={() => router.back()} aria-label="Back" className="text-[#00FFAB]">
           <ArrowLeft className="w-6 h-6" />
         </button>
@@ -216,7 +216,7 @@ export default function ChatThreadPage() {
       </div>
 
       {/* Input */}
-      <div className="sticky bottom-0 left-0 right-0 z-30 px-4 py-4 bg-[#18181b] border-t border-[#00FFAB]/20 flex items-center gap-2" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+      <div className="px-4 py-4 bg-[#18181b] border-t border-[#00FFAB]/20 flex items-center gap-2" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
         <input
           type="text"
           placeholder="Type your message... (encrypted)"
