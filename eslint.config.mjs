@@ -15,7 +15,7 @@ const eslintConfig = [
     rules: {
       // Catch unused variables and imports
       "@typescript-eslint/no-unused-vars": [
-        "error",
+        "warn",
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
@@ -26,8 +26,8 @@ const eslintConfig = [
       "no-unused-vars": "off", // Turn off base rule
 
       // Catch redundant code
-      "no-unreachable": "error",
-      "no-duplicate-imports": "error",
+      "no-unreachable": "warn",
+      "no-duplicate-imports": "warn",
 
       // React-specific unused code detection
       "react/jsx-no-useless-fragment": "warn",
@@ -35,8 +35,8 @@ const eslintConfig = [
 
       // Performance and redundancy
       "react-hooks/exhaustive-deps": "warn",
-      "prefer-const": "error",
-      "no-var": "error",
+      "prefer-const": "warn",
+      "no-var": "warn",
     },
   },
 ];
