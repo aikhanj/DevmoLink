@@ -42,12 +42,8 @@ async function hasPhotoAccess(viewerEmail: string, targetEmail: string): Promise
     return true; // Matched users can see each other's photos
   }
   
-  // Allow viewing photos during swiping - check if target profile is in user's potential matches
-  // This allows viewing photos from the /api/profiles endpoint (for swiping)
-  const _targetSecureId = getSecureIdForEmail(targetEmail);
-  
+  // Allow viewing photos during swiping - be more permissive for the swiping experience
   // Check if this profile would be available to the current user through the profiles API
-  // (i.e., not already swiped on and not the user themselves)
   const swipesQuery = query(
     collection(db, "swipes"), 
     where("from", "==", viewerEmail),
@@ -55,12 +51,35 @@ async function hasPhotoAccess(viewerEmail: string, targetEmail: string): Promise
   );
   const swipesSnapshot = await getDocs(swipesQuery);
   
+  // Also check if the target user has swiped right on the viewer (for likes page)
+  const reverseSwipesQuery = query(
+    collection(db, "swipes"), 
+    where("from", "==", targetEmail),
+    where("to", "==", viewerEmail)
+  );
+  const reverseSwipesSnapshot = await getDocs(reverseSwipesQuery);
+  
+  // Allow access if:
+  // 1. No swipe recorded (user can view during swiping decision)
+  // 2. Current user has swiped right on target (user has shown interest)
+  // 3. Target user has swiped right on current user (shown on likes page)
   if (swipesSnapshot.empty) {
-    // No swipe recorded = user can view during swiping decision
-    return true;
+    return true; // No swipe recorded = user can view during swiping decision
   }
   
-  return false; // Default: no access (already swiped or other restriction)
+  // Check if current user has right-swiped this person
+  const hasRightSwipe = swipesSnapshot.docs.some(doc => doc.data().direction === 'right');
+  if (hasRightSwipe) {
+    return true; // User has swiped right = can still view photos
+  }
+  
+  // Check if target user has right-swiped the current user (likes page scenario)
+  const hasReverseRightSwipe = reverseSwipesSnapshot.docs.some(doc => doc.data().direction === 'right');
+  if (hasReverseRightSwipe) {
+    return true; // Target user has liked current user = current user can view photos
+  }
+  
+  return false; // Left swipe or other restriction
 }
 
 export async function GET(

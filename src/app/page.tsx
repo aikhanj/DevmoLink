@@ -89,7 +89,7 @@ export default function Home() {
   const [loading, setLocalLoading] = useState(true);
   const { setLoading } = useContext(LoadingContext);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [profileComplete, setProfileComplete] = useState<boolean>(false);
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
   // Control when to show the underlying (next) card to prevent initial flash
   const [showNextCard, setShowNextCard] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
@@ -189,19 +189,26 @@ export default function Home() {
   useEffect(() => {
     if (swipedIds.length >= 0 && loading) { // Only run when we're in loading state
       console.log('Loading initial profiles with swipedIds:', swipedIds);
-      loadInitialProfiles()
-        .then(() => {
-          console.log('Photos preloaded, clearing loading state');
-          setLocalLoading(false);
-          setLoading(false);
-        })
-        .catch((error) => {
-          console.error('Error during profile loading/preloading:', error);
-          setLocalLoading(false);
-          setLoading(false);
-        });
+      
+      // Add a small delay to prevent double execution in React StrictMode
+      const timeoutId = setTimeout(() => {
+        loadInitialProfiles()
+          .then(() => {
+            console.log('Photos preloaded, clearing loading state');
+            setLocalLoading(false);
+            setLoading(false);
+          })
+          .catch((error) => {
+            console.error('Error during profile loading/preloading:', error);
+            setLocalLoading(false);
+            setLoading(false);
+          });
+      }, 100);
+      
+      // Cleanup timeout on unmount or dependency change
+      return () => clearTimeout(timeoutId);
     }
-  }, [swipedIds, loading, loadInitialProfiles, setLoading]);
+  }, [swipedIds, loading, loadInitialProfiles]);
 
   const MOCK_PROFILES = [
     {
@@ -1292,7 +1299,7 @@ export default function Home() {
     signIn("google");
   };
 
-  if (status === "loading") return null;
+  if (status === "loading" || profileComplete === null) return null;
   if (!session) {
     return (
       <div className="relative min-h-screen w-full flex items-center justify-center bg-[#030712] font-mono transition-colors duration-500 px-4 overflow-hidden">
@@ -1340,8 +1347,8 @@ export default function Home() {
     );
   }
 
-  // Show profile lock screen if profile is incomplete
-  if (!profileComplete && !showProfileForm) {
+  // Show profile lock screen if profile is incomplete (null means still checking)
+  if (profileComplete === false && !showProfileForm) {
     return (
       <div className="relative min-h-screen w-full flex items-center justify-center bg-[#030712] font-mono transition-colors duration-500 px-4 overflow-hidden">
         {/* Grid pattern overlay */}
