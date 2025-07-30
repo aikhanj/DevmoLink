@@ -99,8 +99,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
     
     resetState();
     
-    // Photo switching only for non-swipeable cards
-    if (!isActive && timeDiff < HOLD_MS && deltaX < 10 && deltaY < 10) {
+    // Photo switching for quick taps with minimal movement (works for all cards)
+    if (timeDiff < HOLD_MS && deltaX < 10 && deltaY < 10) {
       const rect = document.querySelector('.profile-card')?.getBoundingClientRect();
       if (rect) {
         const clickX = clientX - rect.left;
@@ -132,14 +132,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
   };
 
   const visibleInfo = getVisibleInfo();
-
-  // Preload all profile photos
-  useEffect(() => {
-    photos.forEach((url) => {
-      const img = new window.Image();
-      img.src = url;
-    });
-  }, [photos]);
 
   return (
     <div

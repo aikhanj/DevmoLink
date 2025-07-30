@@ -117,6 +117,9 @@ export default function Home() {
     setShowNextCard(true);
   }, []);
 
+  // Track preloaded images for memory management
+  const preloadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
+
   // Function to load more profiles in batches
   const loadMoreProfiles = useCallback(async () => {
     if (isLoadingMore || !hasMoreProfiles) return;
@@ -124,7 +127,7 @@ export default function Home() {
     setIsLoadingMore(true);
     try {
       // Always exclude swiped profiles - they're persisted in the database
-      const result = await fetchProfiles(swipedIds, 3);
+      const result = await fetchProfiles(swipedIds, 6);
       
       if (result.profiles.length > 0) {
         setProfiles(prev => [...prev, ...result.profiles]);
@@ -142,22 +145,78 @@ export default function Home() {
   const loadInitialProfiles = useCallback(async () => {
     console.log('loadInitialProfiles called with swipedIds:', swipedIds);
     try {
-      const result = await fetchProfiles(swipedIds, 3);
+      const result = await fetchProfiles(swipedIds, 6); // Still fetch 6 but only preload 3
       console.log('Initial profiles loaded:', result);
       setProfiles(result.profiles);
       setHasMoreProfiles(result.hasMore);
+      
+      // PRIORITIZED LOADING: First photo of first 6 profiles, then remaining photos of first 3
+      
+      // Phase 1: Preload FIRST photo of up to 6 profiles (for instant swiping)
+      const firstPhotoPromises = result.profiles.slice(0, 6).map((profile: Profile) => {
+        return new Promise<void>((resolve) => {
+          if (profile?.photos && profile.photos.length > 0) {
+            const img = new Image();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            img.src = profile.photos[0]; // Only first photo
+          } else {
+            resolve();
+          }
+        });
+      });
+      
+      // Wait for first photos to load
+      await Promise.all(firstPhotoPromises);
+      
+      // Phase 2: Preload remaining photos of first 3 profiles (for smooth browsing)
+      const remainingPhotoPromises = result.profiles.slice(0, 3).map((profile: Profile) => {
+        return new Promise<void>((resolve) => {
+          if (profile?.photos && profile.photos.length > 1) {
+            const remainingPhotos = profile.photos.slice(1); // Skip first photo (already loaded)
+            const photoPromises = remainingPhotos.map((photoUrl: string) => {
+              return new Promise<void>((photoResolve) => {
+                const img = new Image();
+                img.onload = () => photoResolve();
+                img.onerror = () => photoResolve();
+                img.src = photoUrl;
+              });
+            });
+            Promise.all(photoPromises).then(() => resolve());
+          } else {
+            resolve();
+          }
+        });
+      });
+      
+      // Wait for remaining photos to load (don't block on these)
+      Promise.all(remainingPhotoPromises).then(() => {
+        console.log('All photos for first 3 profiles loaded');
+      });
+      
     } catch (error) {
       console.error("Error loading initial profiles:", error);
+      throw error; // Re-throw to handle in calling code
     }
   }, [swipedIds]);
 
   // Load initial profiles when swipedIds are available
   useEffect(() => {
-    if (swipedIds.length >= 0 && !loading) { // >= 0 to handle empty array
+    if (swipedIds.length >= 0 && loading) { // Only run when we're in loading state
       console.log('Loading initial profiles with swipedIds:', swipedIds);
-      loadInitialProfiles();
+      loadInitialProfiles()
+        .then(() => {
+          console.log('Photos preloaded, clearing loading state');
+          setLocalLoading(false);
+          setLoading(false);
+        })
+        .catch((error) => {
+          console.error('Error during profile loading/preloading:', error);
+          setLocalLoading(false);
+          setLoading(false);
+        });
     }
-  }, [swipedIds, loading, loadInitialProfiles]);
+  }, [swipedIds, loading, loadInitialProfiles, setLoading]);
 
   const MOCK_PROFILES = [
     {
@@ -1048,17 +1107,68 @@ export default function Home() {
           : profile.skills
       }));
       setProfiles(transformedProfiles as Profile[]);
+      
       fetch("/api/swipes").then(res => {
         if (!res.ok) {
           console.error("Failed to fetch swipes:", res.status, res.statusText);
           return { swipedIds: [] }; // Return empty swipedIds on error
         }
         return res.json();
-      }).then(data => setSwipedIds(data.swipedIds || []))
-        .finally(() => {
-          setLocalLoading(false);
-          setLoading(false);
+      }).then(async (data) => {
+        setSwipedIds(data.swipedIds || []);
+        
+        // PRIORITIZED LOADING for mock data: First photo of first 6 profiles, then remaining photos of first 3
+        
+        // Phase 1: Preload FIRST photo of up to 6 mock profiles
+        const firstPhotoPromises = transformedProfiles.slice(0, 6).map((profile: Profile) => {
+          return new Promise<void>((resolve) => {
+            if (profile?.photos && profile.photos.length > 0) {
+              const img = new Image();
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+              img.src = profile.photos[0]; // Only first photo
+            } else {
+              resolve();
+            }
+          });
         });
+        
+        // Wait for first photos to load
+        await Promise.all(firstPhotoPromises);
+        
+        // Phase 2: Preload remaining photos of first 3 profiles (don't block on these)
+        const remainingPhotoPromises = transformedProfiles.slice(0, 3).map((profile: Profile) => {
+          return new Promise<void>((resolve) => {
+            if (profile?.photos && profile.photos.length > 1) {
+              const remainingPhotos = profile.photos.slice(1);
+              const photoPromises = remainingPhotos.map((photoUrl: string) => {
+                return new Promise<void>((photoResolve) => {
+                  const img = new Image();
+                  img.onload = () => photoResolve();
+                  img.onerror = () => photoResolve();
+                  img.src = photoUrl;
+                });
+              });
+              Promise.all(photoPromises).then(() => resolve());
+            } else {
+              resolve();
+            }
+          });
+        });
+        
+        // Don't wait for remaining photos - load in background
+        Promise.all(remainingPhotoPromises).then(() => {
+          console.log('All mock photos for first 3 profiles loaded');
+        });
+        
+        // Clear loading after preloading completes
+        setLocalLoading(false);
+        setLoading(false);
+        
+      }).catch(() => {
+        setLocalLoading(false);
+        setLoading(false);
+      });
     } else {
       // Use real data from API for production
       console.log('Using REAL data from API');
@@ -1072,9 +1182,7 @@ export default function Home() {
         return res.json();
       }).then(data => {
         setSwipedIds(data.swipedIds || []);
-      }).finally(() => {
-        setLocalLoading(false);
-        setLoading(false);
+        // Don't clear loading here - let loadInitialProfiles handle it after preloading
       });
     }
   }, []);
@@ -1095,6 +1203,53 @@ export default function Home() {
       loadMoreProfiles();
     }
   }, [current, filteredProfiles.length, hasMoreProfiles, isLoadingMore, loadMoreProfiles]);
+
+  // Preload photos for current profile + 3 profiles ahead with memory optimization
+  useEffect(() => {
+    // Get URLs that should be preloaded (current + next 3 profiles)
+    const urlsToPreload = new Set<string>();
+    
+    for (let i = 0; i < 4; i++) {
+      const profileIndex = current + i;
+      if (profileIndex < filteredProfiles.length) {
+        const profile = filteredProfiles[profileIndex];
+        if (profile?.photos) {
+          profile.photos.forEach((photoUrl: string) => {
+            if (photoUrl) urlsToPreload.add(photoUrl);
+          });
+        }
+      }
+    }
+
+    // Clean up images that are no longer needed
+    preloadedImages.current.forEach((img, url) => {
+      if (!urlsToPreload.has(url)) {
+        img.src = ''; // Free memory
+        preloadedImages.current.delete(url);
+      }
+    });
+
+    // Preload new images
+    urlsToPreload.forEach((photoUrl) => {
+      if (!preloadedImages.current.has(photoUrl)) {
+        const img = new window.Image();
+        img.onload = () => console.log('Preloaded:', photoUrl);
+        img.onerror = () => console.warn('Failed to preload:', photoUrl);
+        img.src = photoUrl;
+        preloadedImages.current.set(photoUrl, img);
+      }
+    });
+  }, [current, filteredProfiles]);
+
+  // Cleanup preloaded images on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      preloadedImages.current.forEach((img) => {
+        img.src = ''; // Free memory
+      });
+      preloadedImages.current.clear();
+    };
+  }, []);
 
   // Remove card only after swipe animation completes
   const handleCardLeftScreen = useCallback((identifier: string) => {

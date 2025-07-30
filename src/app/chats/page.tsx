@@ -53,7 +53,7 @@ export default function ChatsPage() {
         }
         return res.json();
       }).catch(() => []),
-    ]).then(([matchedProfiles, matchedUserProfiles]) => {
+    ]).then(async ([matchedProfiles, matchedUserProfiles]) => {
       // Ensure both are arrays
       const profiles = Array.isArray(matchedProfiles) ? matchedProfiles : [];
       const userProfiles = Array.isArray(matchedUserProfiles) ? matchedUserProfiles : [];
@@ -76,6 +76,24 @@ export default function ChatsPage() {
 
       // ONLY show actual matches from the database (no localStorage phantom data)
       setChats(enrichedMatchedProfiles);
+      
+      // Preload all avatar images before showing the page
+      const preloadPromises = enrichedMatchedProfiles.map((chat: ChatProfile) => {
+        return new Promise<void>((resolve) => {
+          if (chat.avatarUrl) {
+            const img = new Image();
+            img.onload = () => resolve();
+            img.onerror = () => resolve(); // Still resolve to not block the UI
+            img.src = chat.avatarUrl;
+          } else {
+            resolve(); // No avatar to load
+          }
+        });
+      });
+      
+      // Wait for all avatars to load
+      await Promise.all(preloadPromises);
+      
     }).finally(() => {
       setLocalLoading(false);
       setLoading(false);
