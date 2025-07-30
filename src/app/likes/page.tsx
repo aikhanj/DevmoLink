@@ -88,9 +88,9 @@ export default function LikesPage() {
   if (!session) return null;
   
   return (
-    <div className="min-h-screen w-full bg-[#030712] flex flex-col items-center py-8 px-4">
-      <h2 className="text-2xl font-bold text-[#00FFAB] mb-8 tracking-tight font-mono">Who Likes You</h2>
-      <div className="w-full max-w-md mx-auto space-y-4">
+    <div className="w-full flex flex-col items-center py-4 px-4">
+      <h2 className="text-2xl font-bold text-[#00FFAB] mb-6 tracking-tight font-mono text-center">Who Likes You</h2>
+      <div className="w-full max-w-md mx-auto space-y-4 flex-1">
         {whoLikesMe.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="text-5xl mb-4">💔</div>
