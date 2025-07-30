@@ -1,5 +1,5 @@
 "use client";
-import { useSession, signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useContext, useEffect } from "react";
 import { LoadingContext } from "../MainLayout";
 import { useRouter } from "next/navigation";

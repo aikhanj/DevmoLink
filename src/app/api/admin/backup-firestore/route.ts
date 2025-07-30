@@ -125,7 +125,7 @@ export async function GET() {
       totalDocuments: totalDocs,
       lastChecked: new Date().toISOString()
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: "Health check failed" }, { status: 500 });
   }
 }

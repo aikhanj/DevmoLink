@@ -133,7 +133,7 @@ export async function POST(req: Request) {
   return NextResponse.json({ success: true, matched });
 }
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user || !session.user.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

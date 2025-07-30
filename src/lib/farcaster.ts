@@ -94,7 +94,7 @@ export const farcasterSDK = FarcasterSDK.getInstance();
 
 // Verification utilities
 export async function verifyFrameMessage(
-  messageBytes: string
+  _messageBytes: string
 ): Promise<VerificationResult> {
   try {
     // This would typically use @farcaster/frame-node for verification

@@ -61,7 +61,7 @@ export function EmbedGenerator({
       )}&embeds[]=${encodeURIComponent(generatedEmbed.url)}`;
       
       await openUrl(shareUrl);
-    } catch (error) {
+    } catch {
       // Fallback to opening in new tab
       window.open(
         `https://warpcast.com/~/compose?text=${encodeURIComponent(
@@ -209,7 +209,7 @@ export function QuickShare({ text, url }: { text: string; url?: string }) {
     
     try {
       await openUrl(shareUrl);
-    } catch (error) {
+    } catch {
       window.open(shareUrl, '_blank');
     }
   };

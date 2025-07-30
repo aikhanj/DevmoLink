@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
     let requestData;
     try {
       requestData = await request.json();
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         createFarcasterError('INVALID_JSON', 'Invalid JSON in request body'),
         { status: 400 }

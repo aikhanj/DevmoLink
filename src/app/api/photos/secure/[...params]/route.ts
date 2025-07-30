@@ -44,7 +44,7 @@ async function hasPhotoAccess(viewerEmail: string, targetEmail: string): Promise
   
   // Allow viewing photos during swiping - check if target profile is in user's potential matches
   // This allows viewing photos from the /api/profiles endpoint (for swiping)
-  const targetSecureId = getSecureIdForEmail(targetEmail);
+  const _targetSecureId = getSecureIdForEmail(targetEmail);
   
   // Check if this profile would be available to the current user through the profiles API
   // (i.e., not already swiped on and not the user themselves)

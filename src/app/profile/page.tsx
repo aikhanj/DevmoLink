@@ -1,6 +1,6 @@
 "use client";
 import { User } from "lucide-react";
-import { useSession, signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useEffect, useState, useContext, useCallback } from "react";
 import { db } from "../../firebase";
 import { doc, getDoc } from "firebase/firestore";
