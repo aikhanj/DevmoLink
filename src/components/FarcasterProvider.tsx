@@ -17,7 +17,7 @@ interface FarcasterContextType {
   close: (payload?: Record<string, unknown>) => Promise<void>;
 }
 
-const FarcasterContext = createContext<FarcasterContextType | undefined>(undefined);
+const FarcasterReactContext = createContext<FarcasterContextType | undefined>(undefined);
 
 interface FarcasterProviderProps {
   children: ReactNode;
@@ -113,14 +113,14 @@ export function FarcasterProvider({ children }: FarcasterProviderProps) {
   };
 
   return (
-    <FarcasterContext.Provider value={value}>
+    <FarcasterReactContext.Provider value={value}>
       {children}
-    </FarcasterContext.Provider>
+    </FarcasterReactContext.Provider>
   );
 }
 
 export function useFarcaster() {
-  const context = useContext(FarcasterContext);
+  const context = useContext(FarcasterReactContext);
   if (context === undefined) {
     throw new Error('useFarcaster must be used within a FarcasterProvider');
   }

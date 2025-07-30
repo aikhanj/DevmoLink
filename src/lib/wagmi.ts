@@ -1,18 +1,14 @@
 import { createConfig, http } from 'wagmi';
 import { base, mainnet, optimism, arbitrum } from 'wagmi/chains';
-import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
+import { injected, walletConnect } from 'wagmi/connectors';
 
 // WalletConnect project ID - you'll need to get this from WalletConnect
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '0e15d90a6b3ba3db2273f8be658334b8';
+const projectId = '0e15d90a6b3ba3db2273f8be658334b8';
 
 export const wagmiConfig = createConfig({
   chains: [mainnet, base, optimism, arbitrum],
   connectors: [
     injected(),
-    coinbaseWallet({
-      appName: 'DevmoLink',
-      appLogoUrl: 'https://devmolink.com/icon.png',
-    }),
     walletConnect({
       projectId,
       metadata: {
