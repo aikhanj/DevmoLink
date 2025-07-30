@@ -99,6 +99,13 @@ export async function verifyFrameMessage(
   try {
     // This would typically use @farcaster/frame-node for verification
     // Implementation depends on your backend setup
+    
+    // Placeholder implementation - in real app, this would do actual verification
+    // that could potentially throw an error
+    if (!_messageBytes) {
+      throw new Error('Message bytes required');
+    }
+    
     return {
       isValid: true, // Placeholder
       fid: 12345 // Placeholder
