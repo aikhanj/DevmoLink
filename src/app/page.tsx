@@ -1458,13 +1458,13 @@ export default function Home() {
    }
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#030712] font-mono transition-colors duration-500 px-4 pb-[110px]">
-      <div className="flex-1 flex flex-col items-center w-full mt-10">
+    <div className="w-full flex flex-col items-center justify-center font-mono transition-colors duration-500">
+      <div className="flex flex-col items-center w-full">
         {loading ? (
           null
         ) : isEmpty ? (
-          <div className="w-full" style={{ height: "calc(100vh - 96px)" }}>
-            <div className="flex flex-col items-center justify-center h-full">
+          <div className="w-full flex flex-col items-center justify-center" style={{ minHeight: "400px" }}>
+            <div className="flex flex-col items-center justify-center">
               <div className="text-5xl mb-4">🎉</div>
               <div className="text-white text-xl font-semibold mb-2 font-mono">You&apos;re all caught up!</div>
               <div className="text-base mb-4 font-mono bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">We&apos;ll ping you when new hackers join.</div>
@@ -1487,7 +1487,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-          <div className="relative flex flex-col items-center z-10" style={{ minHeight: 590, height: 590, width: '100%' }}>
+          <div className="relative flex flex-col items-center z-10" style={{ height: 500, width: '100%' }}>
             {/* Render the next card underneath, if it exists */}
             {filteredProfiles[current + 1] && showNextCard && (
               <div

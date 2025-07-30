@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, createContext } from "react";
-import { Settings, Flame, Heart, MessageCircle, User, Compass } from "lucide-react";
+import { Settings, Flame, Heart, MessageCircle, User } from "lucide-react";
 import Link from "next/link";
 // import { Dialog } from "@headlessui/react"; // Unused
 import { signOut, useSession, signIn } from "next-auth/react";
@@ -16,7 +16,6 @@ const navItems = [
   { href: "/likes", label: "Likes", icon: Heart },
   { href: "/chats", label: "Chats", icon: MessageCircle },
   { href: "/profile", label: "Profile", icon: User },
-  { href: "/explore", label: "Explore", icon: Compass },
 ];
 
 // Global loading context

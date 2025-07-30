@@ -240,6 +240,12 @@ body {
     bottom: 0;
   }
   
+  /* Chat header safe area handling */
+  .chat-header {
+    padding-top: max(12px, env(safe-area-inset-top));
+    min-height: calc(64px + env(safe-area-inset-top));
+  }
+  
   /* Improve touch targets for mobile */
   button, input, [role="button"] {
     min-height: 44px;
