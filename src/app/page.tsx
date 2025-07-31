@@ -1538,7 +1538,7 @@ export default function Home() {
               </div>
             )}
             {/* Top card (swipeable) */}
-            {filteredProfiles[current] && (
+                          {filteredProfiles[current] && (
               <div
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center"
                 style={{ height: 500 }}
@@ -1548,6 +1548,17 @@ export default function Home() {
                 onTouchStart={handleHoldStart}
                 onTouchEnd={handleHoldEnd}
               >
+                {/* Gesture guard: overlay blocks swipes until allowSwipe becomes true */}
+                {!allowSwipe && (
+                  <div
+                    className="absolute inset-0 z-40 cursor-grab"
+                    onMouseDown={handleHoldStart}
+                    onMouseUp={handleHoldEnd}
+                    onMouseLeave={handleHoldEnd}
+                    onTouchStart={handleHoldStart}
+                    onTouchEnd={handleHoldEnd}
+                  />
+                )}
                 <div className="w-full max-w-md mx-auto">
                   <AnyTinderCard
                     key={filteredProfiles[current].id}

@@ -64,7 +64,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   return (
     <LoadingContext.Provider value={{ loading, setLoading }}>
       <MiniAppWrapper>
-        <div className={`min-h-screen ${isSecurityAuditPage ? 'flex flex-col' : 'grid grid-rows-[auto_1fr]'} bg-[#030712] dark relative overflow-x-hidden ${isSecurityAuditPage ? 'overflow-y-auto' : ''}`}>
+        <div className={`min-h-screen ${isSecurityAuditPage ? 'flex flex-col overflow-y-auto' : 'grid grid-rows-[auto_1fr] overflow-y-hidden'} bg-[#030712] dark relative overflow-x-hidden`}>
         {/* Global SVG grid background overlay */}
         <div className="pointer-events-none fixed inset-0 z-0 opacity-10">
           <svg width="100%" height="100%" className="absolute inset-0" style={{ minHeight: '100vh' }}>
