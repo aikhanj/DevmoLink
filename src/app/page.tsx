@@ -102,15 +102,45 @@ export default function Home() {
   const [allowSwipe, setAllowSwipe] = useState(false);
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleHoldStart = useCallback(() => {
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleHoldStart = useCallback((e?: MouseEvent | TouchEvent) => {
     if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    // Record initial press position to detect early drags
+    if (e) {
+      const point = 'touches' in e ? (e as TouchEvent).touches[0] : (e as MouseEvent);
+      dragStartRef.current = { x: point.clientX, y: point.clientY };
+    }
     holdTimerRef.current = setTimeout(() => setAllowSwipe(true), 150); // HOLD_MS from ProfileCard
   }, []);
 
   const handleHoldEnd = useCallback(() => {
     if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    dragStartRef.current = null;
     // Do not reset allowSwipe here to avoid interrupting ongoing swipe animation.
   }, []);
+
+  // If the user starts dragging horizontally before HOLD_MS, enable swipe immediately
+  const handlePotentialDrag = useCallback(
+    (rawEvent: MouseEvent | TouchEvent) => {
+      if (allowSwipe) return;
+      if (!dragStartRef.current) return;
+
+      const point = 'touches' in rawEvent ? (rawEvent as TouchEvent).touches[0] : (rawEvent as MouseEvent);
+      const dx = Math.abs(point.clientX - dragStartRef.current.x);
+      const dy = Math.abs(point.clientY - dragStartRef.current.y);
+
+      // Consider it a deliberate swipe if horizontal motion >20px and vertical motion isn't too large
+      if (dx > 20 && dy < 100) {
+        if (holdTimerRef.current) {
+          clearTimeout(holdTimerRef.current);
+          holdTimerRef.current = null;
+        }
+        setAllowSwipe(true);
+      }
+    },
+    [allowSwipe]
+  );
   const [current, setCurrent] = useState(0);
 
   // Reveal the next card once the component has mounted to prevent an initial flash
@@ -1542,23 +1572,15 @@ export default function Home() {
               <div
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center"
                 style={{ height: 500 }}
-                onMouseDown={handleHoldStart}
+                onMouseDown={(e) => handleHoldStart(e.nativeEvent)}
                 onMouseUp={handleHoldEnd}
                 onMouseLeave={handleHoldEnd}
-                onTouchStart={handleHoldStart}
+                onMouseMove={(e) => handlePotentialDrag(e.nativeEvent)}
+                onTouchStart={(e) => handleHoldStart(e.nativeEvent)}
+                onTouchMove={(e) => handlePotentialDrag(e.nativeEvent)}
                 onTouchEnd={handleHoldEnd}
               >
-                {/* Gesture guard: overlay blocks swipes until allowSwipe becomes true */}
-                {!allowSwipe && (
-                  <div
-                    className="absolute inset-0 z-40 cursor-grab"
-                    onMouseDown={handleHoldStart}
-                    onMouseUp={handleHoldEnd}
-                    onMouseLeave={handleHoldEnd}
-                    onTouchStart={handleHoldStart}
-                    onTouchEnd={handleHoldEnd}
-                  />
-                )}
+
                 <div className="w-full max-w-md mx-auto">
                   <AnyTinderCard
                     key={filteredProfiles[current].id}
