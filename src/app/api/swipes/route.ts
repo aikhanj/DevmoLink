@@ -4,24 +4,17 @@ import { collection, addDoc, getDocs, query, where, doc, setDoc, getDoc } from "
 import { randomBytes } from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/authOptions";
-import { getSecureIdForEmail, getEmailFromSecureId } from "../../utils/secureId";
+import { generateSecureId } from "../../utils/secureId";
 
 // Helper function to find email from secure ID
 async function findEmailBySecureId(secureId: string): Promise<string | null> {
-  // First check cache
-  const cachedEmail = getEmailFromSecureId(secureId);
-  if (cachedEmail) {
-    return cachedEmail;
-  }
-  
-  // If not in cache, we need to search through profiles
-  // This is inefficient but works without data migration
+  // Search through profiles to find matching secure ID
   const profilesRef = collection(db, "profiles");
   const snapshot = await getDocs(profilesRef);
   
-  for (const doc of snapshot.docs) {
-    const email = doc.id; // Document ID is the email
-    const profileSecureId = getSecureIdForEmail(email);
+  for (const docSnap of snapshot.docs) {
+    const email = docSnap.id; // Document ID is the email
+    const profileSecureId = generateSecureId(email);
     if (profileSecureId === secureId) {
       return email;
     }
@@ -167,7 +160,7 @@ export async function GET(_req: Request) {
   // Convert emails to secure IDs for frontend
   const swipedSecureIds = snap.docs.map(doc => {
     const toEmail = doc.data().to;
-    return getSecureIdForEmail(toEmail);
+    return generateSecureId(toEmail);
   });
 
   return NextResponse.json({ swipedIds: swipedSecureIds });

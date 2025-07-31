@@ -3,7 +3,7 @@ import { db } from "../../../firebase";
 import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/authOptions";
-import { getSecureIdForEmail } from "../../utils/secureId";
+import { generateSecureId } from "../../utils/secureId";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -23,7 +23,7 @@ export async function GET() {
   for (const email of matchedUsers) {
     const profileSnap = await getDoc(doc(db, "profiles", email));
     if (profileSnap.exists()) {
-      const secureId = getSecureIdForEmail(email);
+      const secureId = generateSecureId(email);
       const profileData = profileSnap.data();
       
       // Remove email and other sensitive data, return only necessary info

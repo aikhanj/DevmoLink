@@ -41,7 +41,6 @@ export const decryptMessage = (
 
     if (!originalMessage) {
       // Likely encrypted with an old scheme — return ciphertext so UI can fall back.
-      console.log("Decryption failed for:", encryptedMessage.substring(0, 20) + "...");
       return encryptedMessage;
     }
 

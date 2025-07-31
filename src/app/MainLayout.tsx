@@ -47,17 +47,19 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   // console.log('settingsOpen:', settingsOpen);
 
-  // Check if current page needs special layout (chat or security audit)
-  const isChatPage = pathname?.startsWith('/chats/') || pathname?.includes('/chat/'); // Only individual chat pages, not /chats list
+  // Check if current page needs special layout (chat, security audit, or welcome screen)
+  const isChatPage = pathname?.startsWith('/chats/') && pathname !== '/chats'; // Only individual chat pages, not /chats list
   const isSecurityAuditPage = pathname?.startsWith('/security-audit');
-  const needsFullLayout = isChatPage || isSecurityAuditPage;
+  const isWelcomeScreen = !session && (pathname === '/' || pathname === '/login' || pathname === '/create-account');
+  const needsFullLayout = isChatPage || isSecurityAuditPage || isWelcomeScreen;
 
   const handleGoogleLogin = () => {
     signIn("google", { callbackUrl: "/" });
   };
 
   // Determine if header should be hidden
-  const hideHeader = (!session) || pathname === "/create-account" || pathname === "/login" || isChatPage;
+  const hideHeader = (!session) || pathname === "/create-account" || pathname === "/login";
+  const showMinimalHeader = hideHeader && !isChatPage;
 
   return (
     <LoadingContext.Provider value={{ loading, setLoading }}>
@@ -84,8 +86,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
         
-                  {/* devmolink name always at top left */}
-        {hideHeader && (
+                  {/* devmolink name always at top left - only for login/signup pages, NOT chat pages */}
+        {showMinimalHeader && (
           <div className="fixed top-0 left-0 w-full z-40 flex items-center justify-between px-8 h-16 bg-black/60 backdrop-blur-lg shadow-inner">
             <button
               onClick={() => router.push('/')} 
@@ -110,12 +112,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         )}
         
         {/* Desktop Navigation - Header */}
-        {!hideHeader && (
+        {!hideHeader && !isChatPage && (
           <TopNav onSettingsClick={() => setSettingsOpen(v => !v)} settingsOpen={settingsOpen} />
         )}
         
         {/* Mobile Header - only logo and settings */}
-        {!hideHeader && (
+        {!hideHeader && !isChatPage && (
           <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 h-14 bg-[#030712]/90 backdrop-blur-md border-b border-[#00FFAB]/20 md:hidden">
             <button 
             onClick={() => router.push('/')} 

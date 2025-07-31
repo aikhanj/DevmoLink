@@ -2,8 +2,8 @@ import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/authOptions";
 import { db } from "../../../../firebase";
-import { doc, getDoc } from "firebase/firestore";
-import { getSecureIdForEmail, getEmailFromSecureId } from "../../../utils/secureId";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { generateSecureId } from "../../../utils/secureId";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ email: string }> }) {
   const session = await getServerSession(authOptions);
@@ -22,8 +22,30 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       // It's an email
       targetEmail = emailOrSecureId;
     } else {
-      // It's a secure ID, convert to email
-      const foundEmail = getEmailFromSecureId(emailOrSecureId);
+      // It's a secure ID, find the corresponding email from matched users
+      const matchesRef = collection(db, "matches");
+      const matchesQuerySnap = query(
+        matchesRef,
+        where("users", "array-contains", currentUserEmail)
+      );
+      
+      const matchesSnapshot = await getDocs(matchesQuerySnap);
+      let foundEmail: string | null = null;
+      
+      // Check all matched users to find which email produces this secure ID
+      for (const matchDoc of matchesSnapshot.docs) {
+        const users = matchDoc.data().users || [];
+        const otherUsers = users.filter((email: string) => email !== currentUserEmail);
+        
+        for (const email of otherUsers) {
+          if (generateSecureId(email) === emailOrSecureId) {
+            foundEmail = email;
+            break;
+          }
+        }
+        if (foundEmail) break;
+      }
+      
       if (!foundEmail) {
         return NextResponse.json({ error: "Profile not found" }, { status: 404 });
       }
@@ -47,7 +69,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const profileData = profileDoc.data();
-    const secureId = getSecureIdForEmail(targetEmail);
+    const secureId = generateSecureId(targetEmail);
 
     // Return safe profile data for matched users
     return NextResponse.json({

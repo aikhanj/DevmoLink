@@ -3,7 +3,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/authOptions";
-import { getSecureIdForEmail } from "../../utils/secureId";
+import { generateSecureId } from "../../utils/secureId";
 
 // Filter sensitive data from profiles for public swiping
 const filterProfileForPublic = (profile: Record<string, unknown>, secureId: string) => ({
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       .map(doc => {
         const profileData = doc.data();
         const email = doc.id; // Document ID is the email
-        const secureId = getSecureIdForEmail(email); // Generate secure ID
+        const secureId = generateSecureId(email); // Generate secure ID
         
         return {
           secureId,
