@@ -98,6 +98,19 @@ export default function Home() {
   const [showProfileForm, setShowProfileForm] = useState(false);
   type TinderCardRef = { swipe: (dir: 'left' | 'right' | 'up' | 'down') => Promise<void>; restoreCard: () => Promise<void> } | null;
   const tinderCardRef = useRef<TinderCardRef>(null);
+  // Require user to hold before enabling swipe (to prevent accidental drags)
+  const [allowSwipe, setAllowSwipe] = useState(false);
+  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleHoldStart = useCallback(() => {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = setTimeout(() => setAllowSwipe(true), 150); // HOLD_MS from ProfileCard
+  }, []);
+
+  const handleHoldEnd = useCallback(() => {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    // Do not reset allowSwipe here to avoid interrupting ongoing swipe animation.
+  }, []);
   const [current, setCurrent] = useState(0);
 
   // Reveal the next card once the component has mounted to prevent an initial flash
@@ -1526,7 +1539,15 @@ export default function Home() {
             )}
             {/* Top card (swipeable) */}
             {filteredProfiles[current] && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center" style={{ height: 500 }}>
+              <div
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-full flex justify-center"
+                style={{ height: 500 }}
+                onMouseDown={handleHoldStart}
+                onMouseUp={handleHoldEnd}
+                onMouseLeave={handleHoldEnd}
+                onTouchStart={handleHoldStart}
+                onTouchEnd={handleHoldEnd}
+              >
                 <div className="w-full max-w-md mx-auto">
                   <AnyTinderCard
                     key={filteredProfiles[current].id}
@@ -1538,8 +1559,11 @@ export default function Home() {
                     outputRotationRange={["-0.5deg", "0deg", "0.5deg"]}
                     flickOnSwipe={true}
                     onSwipe={handleSwipe}
-                    onCardLeftScreen={() => handleCardLeftScreen(filteredProfiles[current].id)}
-                    preventSwipe={['up', 'down']}
+                    onCardLeftScreen={() => {
+                      handleCardLeftScreen(filteredProfiles[current].id);
+                      setAllowSwipe(false); // reset for next card
+                    }}
+                    preventSwipe={allowSwipe ? ['up', 'down'] : ['left', 'right', 'up', 'down']}
                     className="select-none"
                     style={{ 
                       height: 500,

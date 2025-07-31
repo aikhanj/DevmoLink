@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { XMarkIcon, HeartIcon } from '@heroicons/react/24/solid';
 
 // How long the user must hold before the swipe interaction is forwarded (ms)
@@ -37,39 +37,16 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
   const [isPressed, setIsPressed] = useState(false);
   const [pressStart, setPressStart] = useState({ x: 0, y: 0, time: 0 });
   const [swipeHint, setSwipeHint] = useState<'left' | 'right' | null>(null);
-  const holdTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setIsPressed(false);
     setSwipeHint(null);
-    if (holdTimer.current) {
-      clearTimeout(holdTimer.current);
-      holdTimer.current = null;
-    }
-  };
+  }, []);
 
-  const handleStart = (clientX: number, clientY: number, e: React.MouseEvent | React.TouchEvent) => {
-    if (isActive) {
-      // For swipeable cards, just track basic state but don't prevent TinderCard
-      setIsPressed(true);
-      setPressStart({ x: clientX, y: clientY, time: Date.now() });
-      return;
-    }
-    e.stopPropagation(); // Prevent immediate TinderCard activation
+  const handleStart = (clientX: number, clientY: number, _e: React.MouseEvent | React.TouchEvent) => {
+    console.log('handleStart called', { clientX, clientY });
     setIsPressed(true);
     setPressStart({ x: clientX, y: clientY, time: Date.now() });
-    
-    if (holdTimer.current) clearTimeout(holdTimer.current);
-    holdTimer.current = setTimeout(() => {
-      // After hold time, let TinderCard take over by re-dispatching the event
-      const newEvent = new MouseEvent('mousedown', {
-        bubbles: true,
-        cancelable: true,
-        clientX,
-        clientY
-      });
-      (e.target as HTMLElement).dispatchEvent(newEvent);
-    }, HOLD_MS);
   };
 
   const handleMove = (clientX: number, clientY: number) => {
@@ -91,26 +68,26 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
   };
 
   const handleEnd = (clientX: number, clientY: number, e?: React.MouseEvent | React.TouchEvent) => {
+    console.log('handleEnd called', { isPressed, clientX, clientY });
     if (!isPressed) return;
     
     const timeDiff = Date.now() - pressStart.time;
     const deltaX = Math.abs(clientX - pressStart.x);
     const deltaY = Math.abs(clientY - pressStart.y);
     
+    // Reset state first
     resetState();
     
     // Photo switching for quick taps with minimal movement (works for all cards)
-    if (timeDiff < HOLD_MS && deltaX < 10 && deltaY < 10) {
-      // Prevent event bubbling for photo navigation clicks
-      if (e) {
-        e.stopPropagation();
-        e.preventDefault();
-      }
+    if (timeDiff < 500 && deltaX < 20 && deltaY < 20) {
+      console.log('Photo navigation triggered', { timeDiff, deltaX, deltaY, clientX });
+                // Allow the event to bubble so Home’s handleHoldEnd clears the hold timer
       
-      const rect = document.querySelector('.profile-card')?.getBoundingClientRect();
+      const rect = e?.currentTarget?.getBoundingClientRect() || document.querySelector('.profile-card')?.getBoundingClientRect();
       if (rect) {
         const clickX = clientX - rect.left;
         const isLeftSide = clickX < rect.width / 2;
+        console.log('Photo change', { clickX, isLeftSide, currentIdx: photoIdx });
         setPhotoIdx((prev) => 
           isLeftSide 
             ? (prev - 1 + photos.length) % photos.length 
@@ -120,8 +97,19 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
     }
   };
 
+  // Safety mechanism: auto-reset if pressed state gets stuck
+  useEffect(() => {
+    if (isPressed) {
+      const timeout = setTimeout(() => {
+        resetState();
+      }, 1000); // Reset after 1 second if still pressed
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [isPressed, resetState]);
+
   // Cleanup on unmount
-  useEffect(() => () => resetState(), []);
+  useEffect(() => () => resetState(), [resetState]);
 
   // Progressive information reveal based on photo index
   const getVisibleInfo = () => {
@@ -152,6 +140,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
       onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
       onMouseUp={(e) => handleEnd(e.clientX, e.clientY, e)}
       onMouseLeave={resetState}
+      onMouseOut={resetState}
+      onContextMenu={resetState}
       onTouchStart={(e) => {
         const touch = e.touches[0];
         handleStart(touch.clientX, touch.clientY, e);
