@@ -3,11 +3,13 @@ import { useEffect, useState, useCallback, useContext, useRef } from "react";
 import TinderCard from "react-tinder-card";
 // Cast to any to allow passing untyped props like flickDuration
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const AnyTinderCard = TinderCard as any;
+const AnyTinderCard = TinderCard as any;  
 import dynamic from 'next/dynamic';
+// Removed client-side secureId imports - these functions need server-side access
 
 const ProfileCard = dynamic(() => import('./components/ProfileCard'), { ssr: false });
 import { useSession, signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { LoadingContext } from "./MainLayout";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -81,6 +83,7 @@ async function fetchProfiles(excludeIds: string[] = [], limit: number = 3) {
 
 export default function Home() {
   const { data: session, status } = useSession();
+  const router = useRouter();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [swipedIds, setSwipedIds] = useState<string[]>([]);
@@ -187,6 +190,9 @@ export default function Home() {
 
   // Load initial profiles when swipedIds are available
   useEffect(() => {
+    // Don't make API calls if user is not authenticated
+    if (!session) return;
+    
     if (swipedIds.length >= 0 && loading) { // Only run when we're in loading state
       console.log('Loading initial profiles with swipedIds:', swipedIds);
       
@@ -208,7 +214,7 @@ export default function Home() {
       // Cleanup timeout on unmount or dependency change
       return () => clearTimeout(timeoutId);
     }
-  }, [swipedIds, loading, loadInitialProfiles]);
+  }, [session, swipedIds, loading, loadInitialProfiles, setLoading]);
 
   const MOCK_PROFILES = [
     {
@@ -1073,6 +1079,13 @@ export default function Home() {
   }, [session?.user?.email]);
 
   useEffect(() => {
+    // Don't make any API calls if user is not authenticated
+    if (!session) {
+      setLocalLoading(false);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     
     // Check if we should use mock data (for testing environment)
@@ -1080,12 +1093,7 @@ export default function Home() {
     const useMockData = process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === 'true' || 
                        (process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === undefined && process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true');
     
-    console.log('Environment check:', {
-      NEXT_PUBLIC_FORCE_MOCK_DATA: process.env.NEXT_PUBLIC_FORCE_MOCK_DATA,
-      NEXT_PUBLIC_USE_MOCK_DATA: process.env.NEXT_PUBLIC_USE_MOCK_DATA,
-      NODE_ENV: process.env.NODE_ENV,
-      useMockData
-    });
+    
     
     if (useMockData) {
       // Use mock data for testing
@@ -1178,7 +1186,7 @@ export default function Home() {
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setLoading]); // MOCK_PROFILES is a static constant that doesn't need to be in dependencies
+  }, [session, setLoading]); // Added session as dependency
 
   // Filter out already-swiped profiles (current user is already excluded by backend)
   const filteredProfiles = (Array.isArray(profiles) ? profiles : []).filter(
@@ -1189,13 +1197,16 @@ export default function Home() {
 
   // Check if we need to load more profiles when user is close to the end
   useEffect(() => {
+    // Don't make API calls if user is not authenticated
+    if (!session) return;
+    
     const remainingProfiles = filteredProfiles.length - current;
     // Load more when we have 2 or fewer profiles remaining (current + 1 ahead)
     if (remainingProfiles <= 2 && hasMoreProfiles && !isLoadingMore && filteredProfiles.length > 0) {
       console.log('Auto-loading more profiles...', { remainingProfiles, current, filteredProfilesLength: filteredProfiles.length });
       loadMoreProfiles();
     }
-  }, [current, filteredProfiles.length, hasMoreProfiles, isLoadingMore, loadMoreProfiles]);
+  }, [session, current, filteredProfiles.length, hasMoreProfiles, isLoadingMore, loadMoreProfiles]);
 
   // Preload photos for current profile + 3 profiles ahead with memory optimization
   useEffect(() => {
@@ -1254,7 +1265,7 @@ export default function Home() {
 
   const handleSwipe = useCallback(
     (dir: "left" | "right" | "up" | "down") => {
-      if (!showProfile) return;
+      if (!showProfile || !session) return;
       if (dir === "left" || dir === "right") {
         // Record swipe in backend and determine if it's a match
         (async () => {
@@ -1268,12 +1279,15 @@ export default function Home() {
             
             // Only show match if both users swiped right (mutual match)
             if (dir === "right" && result.matched) {
-              // For matched users, we need to get the email for chat functionality
-              // This could be improved by having the API return the matched user's info
               toast.success(`🎉 It's a Match! You and ${showProfile.name} liked each other!`);
-              // Note: Chat functionality might need updating to work with profile IDs
-              // For now, we'll need to handle this differently or update chat logic
-              console.log(`Match with profile ID: ${showProfile.id}`);
+              
+              // Navigate to chat using the matched user's email
+              if (result.matchedUserEmail) {
+                // Small delay to let the user see the match toast
+                setTimeout(() => {
+                  router.push(`/chats/${encodeURIComponent(result.matchedUserEmail)}`);
+                }, 1500);
+              }
             } else if (dir === "right" && !result.matched) {
               // Just a like, not a match yet
               console.log(`You liked ${showProfile.name}, waiting for them to like you back`);
@@ -1285,7 +1299,7 @@ export default function Home() {
         setSwipedIds((prev) => [...prev, showProfile.id]);
       }
     },
-    [showProfile]
+    [showProfile, session, router]
   );
 
   const mainHeadline1 = "Welcome to";
@@ -1299,7 +1313,8 @@ export default function Home() {
     signIn("google");
   };
 
-  if (status === "loading" || profileComplete === null) return null;
+  if (status === "loading") return null;
+  if (session && profileComplete === null) return null; // Only check profile completion for logged-in users
   if (!session) {
     return (
       <div className="relative min-h-screen w-full flex items-center justify-center bg-[#030712] font-mono transition-colors duration-500 px-4 overflow-hidden">

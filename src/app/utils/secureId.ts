@@ -7,8 +7,12 @@ import { createHash } from 'crypto';
 export function generateSecureId(email: string): string {
   // Use SHA-256 hash with a salt to create a secure ID
   const hash = createHash('sha256');
-  hash.update(email + process.env.NEXTAUTH_SECRET); // Use app secret as salt
-  return hash.digest('hex').substring(0, 16); // Use first 16 characters for shorter IDs
+  const secret = process.env.NEXTAUTH_SECRET
+
+  hash.update(email + secret); // Use app secret as salt
+  const result = hash.digest('hex').substring(0, 16); // Use first 16 characters for shorter IDs
+  
+  return result;
 }
 
 /**

@@ -3,23 +3,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/authOptions";
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../../../../firebase";
-import { getSecureIdForEmail, getEmailFromSecureId } from "../../../../utils/secureId";
+import { generateSecureId } from "../../../../utils/secureId";
 
 // Helper function to find email from secure ID
 async function findEmailBySecureId(secureId: string): Promise<string | null> {
-  // First check cache
-  const cachedEmail = getEmailFromSecureId(secureId);
-  if (cachedEmail) {
-    return cachedEmail;
-  }
-  
-  // If not in cache, search through profiles
+  // Search through profiles to find matching secure ID
   const profilesRef = collection(db, "profiles");
   const snapshot = await getDocs(profilesRef);
   
   for (const docSnap of snapshot.docs) {
     const email = docSnap.id; // Document ID is the email
-    const profileSecureId = getSecureIdForEmail(email);
+    const profileSecureId = generateSecureId(email);
     if (profileSecureId === secureId) {
       return email;
     }

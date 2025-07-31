@@ -5,12 +5,29 @@ import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingContext } from "../MainLayout";
 import { toast } from 'react-hot-toast';
+import { collection, query, orderBy, limit, getDocs, doc, getDoc } from "firebase/firestore";
+import { db } from "../../firebase";
+import { decryptMessage } from "../utils/encryption";
+import { getEmailFromSecureId } from "../utils/secureId";
+
+// Client-side secure ID helpers
+async function getSecureIdForEmail(email: string): Promise<string> {
+  const response = await fetch('/api/secure-id', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'generate', email })
+  });
+  const data = await response.json();
+  return data.secureId;
+}
 
 interface ChatProfile {
   id: string; // email
   name?: string;
   email?: string;
   avatarUrl?: string;
+  latestMessage?: string;
+  latestTimestamp?: number;
 }
 
 export default function ChatsPage() {
@@ -26,6 +43,89 @@ export default function ChatsPage() {
   // 🔒 ADMIN MODE - Only show dangerous buttons to specific admin users
   const isAdminMode = session?.user?.email === 'ajumashukurov@gmail.com' || // Your Gmail account
     session?.user?.email === 'jaikh.saiful@gmail.com'; // Add other admin emails here
+
+  // Helper function to find email from secure ID
+  const findEmailBySecureId = async (secureId: string): Promise<string | null> => {
+    // First check cache - this now needs to be done server-side
+    // TODO: Implement server-side caching properly
+    
+    // If not in cache, search through profiles
+    const profilesRef = collection(db, "profiles");
+    const snapshot = await getDocs(profilesRef);
+    
+    for (const docSnap of snapshot.docs) {
+      const email = docSnap.id; // Document ID is the email
+      const profileSecureId = await getSecureIdForEmail(email);
+      if (profileSecureId === secureId) {
+        return email;
+      }
+    }
+    
+    return null;
+  };
+
+  // Function to fetch latest message for a chat
+  const fetchLatestMessage = async (userEmail: string, otherUserSecureId: string): Promise<{message: string, timestamp: number} | null> => {
+    // Convert secure ID to actual email
+    let otherUserEmail = getEmailFromSecureId(otherUserSecureId);
+    
+    // If not in cache and looks like secure ID, search for it
+    if (!otherUserEmail && !otherUserSecureId.includes('@')) {
+      otherUserEmail = await findEmailBySecureId(otherUserSecureId);
+    }
+    
+    // Fallback to treating as email if conversion failed
+    if (!otherUserEmail) {
+      otherUserEmail = otherUserSecureId;
+    }
+    try {
+      const chatId = [userEmail, otherUserEmail].sort().join("_");
+      const messagesRef = collection(db, "matches", chatId, "messages");
+      const q = query(messagesRef, orderBy("timestamp", "desc"), limit(1));
+      const snapshot = await getDocs(q);
+      
+      if (snapshot.empty) {
+        return null;
+      }
+
+      const latestDoc = snapshot.docs[0];
+      const messageData = latestDoc.data();
+      
+      // Get chat salt for decryption
+      let chatSalt = "devmolink_salt";
+      try {
+        const matchDocRef = doc(db, "matches", chatId);
+        const matchDoc = await getDoc(matchDocRef);
+        if (matchDoc.exists()) {
+          const matchData = matchDoc.data();
+          chatSalt = matchData.salt || "devmolink_salt";
+        }
+      } catch (err) {
+        console.error("Failed to fetch chat salt for latest message", err);
+      }
+
+      let displayText = messageData.text;
+      
+      // Decrypt if encrypted
+      if (messageData.isEncrypted) {
+        displayText = decryptMessage(messageData.text, userEmail, otherUserEmail, chatSalt);
+      } else if (messageData.text.length > 50 && /^[A-Za-z0-9+/]+=*$/.test(messageData.text)) {
+        // Fallback: try to decrypt if it looks encrypted
+        const decrypted = decryptMessage(messageData.text, userEmail, otherUserEmail, chatSalt);
+        if (decrypted !== messageData.text && decrypted.length > 0 && !decrypted.includes('U2FsdGVk')) {
+          displayText = decrypted;
+        }
+      }
+
+      return {
+        message: displayText,
+        timestamp: messageData.timestamp || 0
+      };
+    } catch (error) {
+      console.error("Error fetching latest message:", error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     if (!session) return;
@@ -64,15 +164,35 @@ export default function ChatsPage() {
         profile.email !== currentUserEmail && profile.id !== currentUserEmail
       );
 
-      // Merge matched profiles with their full profile data (including avatars)
-      const enrichedMatchedProfiles = filteredMatchedProfiles.map((match: ChatProfile) => {
-        const profile = userProfiles.find((p: ChatProfile) => p.email === match.id || p.id === match.id);
-        return {
-          ...match,
-          name: profile?.name || match.name,
-          avatarUrl: profile?.avatarUrl
-        };
-      });
+      // Merge matched profiles with their full profile data (including avatars and latest messages)
+      const enrichedMatchedProfiles = await Promise.all(
+        filteredMatchedProfiles.map(async (match: ChatProfile) => {
+          const profile = userProfiles.find((p: ChatProfile) => p.email === match.id || p.id === match.id);
+          
+          // Fetch latest message for this chat
+          let latestMessage = "Say hi and start collaborating!";
+          let latestTimestamp = 0;
+          
+          if (currentUserEmail) {
+            const latestMessageData = await fetchLatestMessage(currentUserEmail, match.id);
+            if (latestMessageData) {
+              latestMessage = latestMessageData.message;
+              latestTimestamp = latestMessageData.timestamp;
+            }
+          }
+          
+          return {
+            ...match,
+            name: profile?.name || match.name,
+            avatarUrl: profile?.avatarUrl,
+            latestMessage,
+            latestTimestamp
+          };
+        })
+      );
+
+      // Sort chats by latest message timestamp (most recent first)
+      enrichedMatchedProfiles.sort((a, b) => (b.latestTimestamp || 0) - (a.latestTimestamp || 0));
 
       // ONLY show actual matches from the database (no localStorage phantom data)
       setChats(enrichedMatchedProfiles);
@@ -127,9 +247,9 @@ export default function ChatsPage() {
   }
 
   return (
-    <div className="w-full flex flex-col items-center py-4 px-4">
-      <h2 className="text-2xl font-bold text-[#00FFAB] mb-6 tracking-tight font-mono text-center">Chats</h2>
-      <div className="w-full max-w-md mx-auto space-y-6 flex-1">
+    <div className="w-full flex flex-col px-4 pt-4">
+      <h2 className="text-2xl font-bold text-[#00FFAB] mb-6 tracking-tight font-mono">Chats</h2>
+      <div className="w-full max-w-md space-y-6 flex-1">
                  {/* Admin buttons - only show in development or to admin users */}
          {isAdminMode && (
          <>
@@ -195,7 +315,22 @@ export default function ChatsPage() {
           chats.map((chat) => (
             <button
               key={chat.id}
-              onClick={() => router.push(`/chats/${encodeURIComponent(chat.id)}`)}
+              onClick={async () => {
+                // Convert secure ID to email for navigation
+                let emailForNavigation = getEmailFromSecureId(chat.id);
+                
+                // If not in cache and looks like secure ID, search for it
+                if (!emailForNavigation && !chat.id.includes('@')) {
+                  emailForNavigation = await findEmailBySecureId(chat.id);
+                }
+                
+                // Fallback to treating as email if conversion failed
+                if (!emailForNavigation) {
+                  emailForNavigation = chat.id;
+                }
+                
+                router.push(`/chats/${encodeURIComponent(emailForNavigation)}`);
+              }}
               className="w-full flex items-center gap-4 bg-[#18181b] rounded-xl shadow-lg shadow-black/20 p-4 transition-all duration-150 hover:scale-[1.02] hover:shadow-xl"
             >
                              <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
@@ -207,7 +342,7 @@ export default function ChatsPage() {
                </div>
               <div className="flex-1 text-left">
                 <div className="font-semibold text-white text-[1.125rem] font-mono">{chat.name ?? chat.email ?? chat.id}</div>
-                <div className="text-[#00FFAB] text-sm truncate font-mono">Say hi and start collaborating!</div>
+                <div className="text-[#00FFAB] text-sm truncate font-mono">{chat.latestMessage || "Say hi and start collaborating!"}</div>
               </div>
               <MessageCircle className="text-[#00FFAB] transition-all duration-150 ease-out" />
             </button>
