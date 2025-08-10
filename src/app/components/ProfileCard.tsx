@@ -1,5 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo, useLayoutEffect } from 'react';
 import { XMarkIcon, HeartIcon } from '@heroicons/react/24/solid';
+import CardPhoto from '@/components/media/CardPhoto';
+import { pickVariant } from '@/lib/images';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { PhotoMeta } from '@/types/db';
 
 // How long the user must hold before the swipe interaction is forwarded (ms)
 const HOLD_MS = 150;
@@ -13,7 +17,8 @@ interface ProfileCardProps {
     programmingLanguages?: string[];
     themes?: string[];
     timezone?: string;
-    photos: string[];
+    photos?: string[]; // Legacy format
+    photo?: PhotoMeta; // New optimized format
     description?: string;
     gender?: string;
     professions?: string[];
@@ -27,12 +32,22 @@ interface ProfileCardProps {
   };
   onSwipe: (dir: 'left' | 'right') => void;
   isActive: boolean;
+  imageComponent?: React.ReactNode; // Optional external image component
 }
 
-const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe }) => {
-  const { name, age, programmingLanguages = [], photos: rawPhotos = [], description } = profile;
+const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe, imageComponent }) => {
+  const { name, age, programmingLanguages = [], photos: rawPhotos = [], photo, description } = profile;
+  const desktop = useIsDesktop();
 
-  const photos = useMemo(() => Array.from(new Set(rawPhotos.filter(Boolean))), [rawPhotos]);
+  // Support both legacy photos array and new photo object
+  const photos = useMemo(() => {
+    if (photo?.variants && Object.keys(photo.variants).length > 0) {
+      // Use variants for optimized loading
+      return Object.values(photo.variants).filter(Boolean);
+    }
+    return Array.from(new Set(rawPhotos.filter(Boolean)));
+  }, [rawPhotos, photo]);
+
   const [photoIdx, setPhotoIdx] = useState(0);
   const [isPressed, setIsPressed] = useState(false);
   const [pressStart, setPressStart] = useState({ x: 0, y: 0, time: 0 });
@@ -51,66 +66,58 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
     }
   };
 
-  const handleStart = (clientX: number, clientY: number, e: React.MouseEvent | React.TouchEvent) => {
-    if (isActive) {
-      // For swipeable cards, just track basic state but don't prevent TinderCard
-      setIsPressed(true);
-      setPressStart({ x: clientX, y: clientY, time: Date.now() });
-      return;
-    }
-    e.stopPropagation(); // Prevent immediate TinderCard activation
-    setIsPressed(true);
-    setPressStart({ x: clientX, y: clientY, time: Date.now() });
+  const handleStart = (clientX: number, clientY: number, e: React.TouchEvent | React.MouseEvent) => {
+    if (!isActive) return;
     
-    if (holdTimer.current) clearTimeout(holdTimer.current);
-    holdTimer.current = setTimeout(() => {
-      // After hold time, let TinderCard take over by re-dispatching the event
-      const newEvent = new MouseEvent('mousedown', {
-        bubbles: true,
-        cancelable: true,
-        clientX,
-        clientY
-      });
-      (e.target as HTMLElement).dispatchEvent(newEvent);
-    }, HOLD_MS);
+    if ('touches' in e) {
+      // For swipeable cards, just track basic state but don't prevent TinderCard
+      setPressStart({ x: clientX, y: clientY, time: Date.now() });
+      setIsPressed(true);
+    } else {
+      e.stopPropagation(); // Prevent immediate TinderCard activation
+      setPressStart({ x: clientX, y: clientY, time: Date.now() });
+      setIsPressed(true);
+      
+      holdTimer.current = setTimeout(() => {
+        // After hold time, let TinderCard take over by re-dispatching the event
+        const rect = (e.target as HTMLElement).getBoundingClientRect();
+        const newEvent = new MouseEvent('mousedown', {
+          bubbles: true,
+          clientX,
+          clientY,
+        });
+        (e.target as HTMLElement).dispatchEvent(newEvent);
+      }, HOLD_MS);
+    }
   };
 
   const handleMove = (clientX: number, clientY: number) => {
-    if (!isPressed) return;
-    if (isActive) return; // Skip hint updates for swipeable cards to avoid jitter
+    if (!isActive || isPressed) return; // Skip hint updates for swipeable cards to avoid jitter
     
-    const deltaX = clientX - pressStart.x;
-    const deltaY = Math.abs(clientY - pressStart.y);
-    
-    // Only show hints if horizontal movement is significant and not too much vertical movement
-    if (Math.abs(deltaX) > 20 && deltaY < 50) {
-      const newHint = deltaX > 0 ? 'right' : 'left';
+    const rect = (document.querySelector('.profile-card') as HTMLElement)?.getBoundingClientRect();
+    if (rect) {
+      const deltaX = clientX - rect.left - rect.width / 2;
+      const threshold = 50;
+      const newHint = deltaX > threshold ? 'right' : deltaX < -threshold ? 'left' : null;
       if (newHint !== swipeHint) {
         setSwipeHint(newHint);
       }
-    } else if (Math.abs(deltaX) < 10) {
+    } else {
       setSwipeHint(null);
     }
   };
 
-  const handleEnd = (clientX: number, clientY: number, _e?: React.MouseEvent | React.TouchEvent) => {
-    if (!isPressed) return;
-    
-    const timeDiff = Date.now() - pressStart.time;
-    const deltaX = Math.abs(clientX - pressStart.x);
-    const deltaY = Math.abs(clientY - pressStart.y);
+  const handleEnd = (clientX: number, clientY: number, e: React.TouchEvent | React.MouseEvent) => {
+    if (!isActive) return;
     
     resetState();
     
-    // Photo switching for quick taps with minimal movement (works for all cards)
-    if (timeDiff < HOLD_MS && deltaX < 10 && deltaY < 10) {
-      // Prevent event bubbling for photo navigation clicks
-     
-
-      
-      const rect = document.querySelector('.profile-card')?.getBoundingClientRect();
-      if (rect) {
-        const clickX = clientX - rect.left;
+    const deltaTime = Date.now() - pressStart.time;
+    if (deltaTime < HOLD_MS && e.target instanceof HTMLElement) {
+      // Quick tap - navigate photos
+      const rect = e.target.getBoundingClientRect();
+      const clickX = clientX - rect.left;
+      if (photos.length > 1) {
         const isLeftSide = clickX < rect.width / 2;
         setPhotoIdx((prev) => 
           isLeftSide 
@@ -120,9 +127,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
       }
     }
   };
-
-  // Cleanup on unmount
-  useEffect(() => () => resetState(), []);
 
   // When photo changes, determine loading state before paint to avoid flicker
   useLayoutEffect(() => {
@@ -152,19 +156,65 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
 
   const visibleInfo = getVisibleInfo();
 
+  // Render optimized image if using variants, otherwise fall back to regular img
+  const renderImage = () => {
+    // If an external image component is provided (from CardStack), use it
+    if (imageComponent) {
+      return imageComponent;
+    }
+
+    // If we have photo variants, use the optimized CardPhoto component
+    if (photo?.variants && Object.keys(photo.variants).length > 0) {
+      const src = pickVariant(photo.variants, { desktop });
+      if (src) {
+        return (
+          <CardPhoto
+            src={src}
+            blurDataURL={photo.blurDataURL}
+            desktop={desktop}
+            priority={isActive} // Only prioritize the active card
+          />
+        );
+      }
+    }
+
+    // Fall back to legacy img tag for backwards compatibility
+    return (
+      <img
+        ref={imgRef}
+        src={photos[photoIdx]}
+        alt={`${name} photo ${photoIdx + 1}`}
+        className={`w-full h-full object-cover bg-gray-900 ${imageLoading && !imageError ? 'opacity-0 transition-opacity duration-300' : 'opacity-100'}`}
+        draggable={false}
+        onError={() => {
+          console.error(`Failed to load image for ${name}:`, {
+            url: photos[photoIdx],
+            photoIndex: photoIdx,
+            totalPhotos: photos.length,
+            allPhotos: photos
+          });
+          setImageError(true);
+          setImageLoading(false);
+        }}
+        onLoad={() => {
+          setImageLoading(false);
+          console.log(`Successfully loaded image for ${name}:`, {
+            url: photos[photoIdx],
+            photoIndex: photoIdx
+          });
+        }}
+      />
+    );
+  };
+
   return (
     <div
-      className="profile-card relative w-full aspect-[3/4] max-w-[400px] max-h-[600px] mx-auto rounded-xl overflow-hidden bg-gray-900 shadow-lg will-change-transform select-none"
-      style={{
-        transform: 'translateZ(0)',
-        backfaceVisibility: 'hidden',
-        WebkitFontSmoothing: 'antialiased',
-        MozOsxFontSmoothing: 'grayscale'
-      }}
+      className="profile-card relative w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl shadow-2xl overflow-hidden cursor-pointer select-none"
+      style={{ height: '100%' }}
       onMouseDown={(e) => handleStart(e.clientX, e.clientY, e)}
       onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
       onMouseUp={(e) => handleEnd(e.clientX, e.clientY, e)}
-      onMouseLeave={resetState}
+      onMouseLeave={() => resetState()}
       onTouchStart={(e) => {
         const touch = e.touches[0];
         handleStart(touch.clientX, touch.clientY, e);
@@ -182,13 +232,14 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
         <>
           {/* Loading overlay (full card) */}
           {(imageLoading && !imageError) && (
-            <div className="absolute inset-0 z-10 shimmer" />
+            <div className="absolute inset-0 bg-gray-900 flex items-center justify-center z-40">
+              <div className="w-8 h-8 border-4 border-blue-400/30 border-t-blue-400 rounded-full animate-spin"></div>
+            </div>
           )}
-          {/* Error overlay */}
           {imageError && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-900">
-              <div className="text-center text-gray-400">
-                <div className="mb-2">Failed to load photo</div>
+            <div className="absolute inset-0 bg-gray-900 flex flex-col items-center justify-center z-40 gap-3">
+              <p className="text-white/70 text-sm">Failed to load image</p>
+              <div className="flex gap-2">
                 <button
                   className="px-3 py-1 text-xs rounded bg-white/10 hover:bg-white/20 border border-white/10"
                   onClick={() => {
@@ -201,31 +252,9 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
               </div>
             </div>
           )}
-          <img
-            ref={imgRef}
-            src={photos[photoIdx]}
-            alt={`${name} photo ${photoIdx + 1}`}
-            className={`w-full h-full object-cover bg-gray-900 ${imageLoading && !imageError ? 'opacity-0 transition-opacity duration-300' : 'opacity-100'}`}
-            draggable={false}
-            onError={() => {
-              console.error(`Failed to load image for ${name}:`, {
-                url: photos[photoIdx],
-                photoIndex: photoIdx,
-                totalPhotos: photos.length,
-                allPhotos: photos
-              });
-              setImageError(true);
-              setImageLoading(false);
-            }}
-            onLoad={() => {
-              setImageLoading(false);
-              // Optional: keep console log for debugging
-              console.log(`Successfully loaded image for ${name}:`, {
-                url: photos[photoIdx],
-                photoIndex: photoIdx
-              });
-            }}
-          />
+          
+          {renderImage()}
+          
           <ul className="absolute top-3 inset-x-4 flex gap-1 z-30">
             {photos.map((_, i) => (
               <li key={i} className={`flex-1 h-0.5 rounded-full ${i === photoIdx ? 'bg-white' : 'bg-white/30'}`} />
@@ -241,7 +270,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
               </div>
             </div>
           )}
-          
           {swipeHint === 'right' && (
             <div className="absolute inset-0 bg-emerald-500/70 flex items-center justify-center z-20 transition-all duration-300 ease-out animate-in fade-in">
               <div className="bg-emerald-500/90 backdrop-blur-sm rounded-2xl px-8 py-4 flex items-center gap-3 shadow-xl">
@@ -250,9 +278,118 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
               </div>
             </div>
           )}
+
+          {/* Profile Info Overlay */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-6 pt-20">
+            <div className="text-white">
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-2xl font-bold">{name}</h2>
+                {age && <span className="text-xl text-white/80">{age}</span>}
+              </div>
+              
+              {/* Progressive info reveal */}
+              {(() => {
+                const visibleInfo = getVisibleInfo();
+                return (
+                  <div>
+                    {/* Basic Info */}
+                    {visibleInfo.showBasicInfo && profile.gender && (
+                      <div className="mt-2">
+                        <span className={`px-3 py-1 text-xs rounded-full border ${
+                          profile.gender.toLowerCase() === 'male' 
+                            ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                            : profile.gender.toLowerCase() === 'female'
+                            ? 'bg-pink-500/20 text-pink-300 border-pink-500/30'
+                            : 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                        }`}>
+                          {profile.gender}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Professions */}
+                    {visibleInfo.showProfessions && profile.professions && profile.professions.length > 0 && (
+                      <div className="mt-2">
+                        <div className="flex flex-wrap gap-2">
+                          {profile.professions.map(profession => (
+                            <span key={profession} className="px-3 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                              {profession}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Skills */}
+                    {visibleInfo.showSkills && (
+                      <div className="mt-2 space-y-2">
+                        {profile.skills?.languages && profile.skills.languages.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {profile.skills.languages.slice(0, 4).map(skill => (
+                              <span key={skill} className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {!profile.skills && programmingLanguages.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {programmingLanguages.slice(0, 4).map(skill => (
+                              <span key={skill} className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Experience and Interests */}
+                    {visibleInfo.showExperience && profile.experienceLevel && (
+                      <div className="mt-2">
+                        <span className="px-3 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                          {profile.experienceLevel}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Bottom buttons for inactive cards */}
+          {!isActive && (
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-6 z-30">
+              <button
+                onClick={() => onSwipe('left')}
+                className="w-14 h-14 bg-red-500 hover:bg-red-400 rounded-full flex items-center justify-center shadow-lg transition-all"
+              >
+                <XMarkIcon className="w-6 h-6 text-white" />
+              </button>
+              <button
+                onClick={() => onSwipe('right')}
+                className="w-14 h-14 bg-emerald-500 hover:bg-emerald-400 rounded-full flex items-center justify-center shadow-lg transition-all"
+              >
+                <HeartIcon className="w-6 h-6 text-white" />
+              </button>
+            </div>
+          )}
+
+          {/* Action hints */}
+          <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center z-30">
+            <div className="flex items-center gap-1">
+              <XMarkIcon className="w-4 h-4 text-red-400/60" />
+              <div className="text-red-400/60 text-xs">Swipe left</div>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="text-emerald-400/60 text-xs">Swipe right</div>
+              <HeartIcon className="w-4 h-4 text-emerald-400/60" />
+            </div>
+          </div>
         </>
       ) : (
-        <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+        <div className="w-full h-full bg-gray-800 flex flex-col items-center justify-center">
           <p className="text-gray-400">No photo available</p>
           {/* Debug info */}
           <div className="absolute bottom-2 left-2 text-xs text-red-400 bg-black/50 p-1 rounded">
@@ -261,137 +398,37 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
         </div>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-        {/* Progressive information reveal */}
-        
-                 {/* Basic Info: Name, Age, Gender (Photo 0 only) */}
-         {visibleInfo.showBasicInfo && (
-           <div className="animate-in fade-in duration-300">
-             <h2 className="text-white text-lg font-semibold">
-               {name}, {age}
-             </h2>
-                           {profile.gender && profile.gender.toLowerCase() !== 'other' && (
-                <div className="mt-2">
-                  <span className={`px-3 py-1 text-xs rounded-full border ${
-                    profile.gender.toLowerCase() === 'male' 
-                      ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
-                      : profile.gender.toLowerCase() === 'female'
-                      ? 'bg-pink-500/20 text-pink-300 border-pink-500/30'
-                      : profile.gender.toLowerCase() === 'non-binary'
-                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-                      : 'bg-gray-500/20 text-gray-300 border-gray-500/30'
-                  }`}>
-                    {profile.gender}
-                  </span>
-                </div>
-              )}
-           </div>
-         )}
-        
-        {/* Professions (Photo 1 only) */}
-        {visibleInfo.showProfessions && profile.professions && profile.professions.length > 0 && (
-          <div className="mt-3 animate-in fade-in duration-300">
-            <div className="flex flex-wrap gap-2">
-              {profile.professions.map(profession => (
-                <span key={profession} className="px-3 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                  {profession}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* Skills and Tools (Photo 2 only) */}
-        {(visibleInfo.showSkills || visibleInfo.showTools) && (
-          <div className="mt-3 space-y-3 animate-in fade-in duration-300">
-            {/* Skills */}
-            {visibleInfo.showSkills && (
-              <>
-                {/* Programming Languages from skills object */}
-                {profile.skills?.languages && profile.skills.languages.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {profile.skills.languages.slice(0, 4).map(skill => (
-                      <span key={skill} className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                
-                {/* Frameworks */}
-                {profile.skills?.frameworks && profile.skills.frameworks.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {profile.skills.frameworks.slice(0, 3).map(skill => (
-                      <span key={skill} className="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                
-                {/* Fallback to old programmingLanguages for backward compatibility */}
-                {!profile.skills && programmingLanguages.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {programmingLanguages.slice(0, 4).map(skill => (
-                      <span key={skill} className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </>
+      {/* Bottom content overlay for more details */}
+      <div className="absolute bottom-0 left-0 right-0 transform translate-y-full bg-gray-900/95 backdrop-blur-md p-6 transition-transform duration-300 hover:translate-y-0 z-10">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-2">About {name}</h3>
+            {description && (
+              <p className="text-gray-300 text-sm leading-relaxed">{description}</p>
             )}
-            
-            {/* Tools */}
-            {visibleInfo.showTools && profile.tools && profile.tools.length > 0 && (
+          </div>
+          
+          {programmingLanguages && programmingLanguages.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-400 mb-2">Programming Languages</h4>
               <div className="flex flex-wrap gap-2">
-                {profile.tools.slice(0, 4).map(tool => (
-                  <span key={tool} className="px-2 py-1 text-xs rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">
-                    {tool}
+                {programmingLanguages.slice(0, 6).map((lang, idx) => (
+                  <span 
+                    key={idx} 
+                    className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs border border-blue-500/30"
+                  >
+                    {lang}
                   </span>
                 ))}
+                {programmingLanguages.length > 6 && (
+                  <span className="px-2 py-1 bg-gray-500/20 text-gray-400 rounded-full text-xs">
+                    +{programmingLanguages.length - 6} more
+                  </span>
+                )}
               </div>
-            )}
-          </div>
-        )}
-        
-        {/* Experience Level and Interests (Photo 3+) */}
-        {(visibleInfo.showExperience || visibleInfo.showInterests) && (
-          <div className="mt-3 space-y-3 animate-in fade-in duration-300">
-            {/* Experience Level */}
-            {visibleInfo.showExperience && profile.experienceLevel && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">Experience:</span>
-                <span className="px-3 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
-                  {profile.experienceLevel}
-                </span>
-              </div>
-            )}
-            
-            {/* Interests */}
-            {visibleInfo.showInterests && profile.interests && profile.interests.length > 0 && (
-              <div>
-                <p className="text-xs text-gray-400 mb-2">Looking for:</p>
-                <div className="flex flex-wrap gap-2">
-                  {profile.interests.slice(0, 3).map(interest => (
-                    <span key={interest} className="px-2 py-1 text-xs rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30">
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        
-        {/* Description (if no categorized info to show) */}
-        {photoIdx >= 4 && description && (
-          <div className="mt-3 animate-in fade-in duration-300">
-            <p className="text-gray-400 text-sm">
-              {description}
-            </p>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
         
         {/* Progress indicator */}
         <div className="mt-4 text-xs text-white/50 flex justify-between items-center">
@@ -399,46 +436,14 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
           <span className="text-xs text-gray-500">
             {photoIdx === 0 && "Basic info"}
             {photoIdx === 1 && "Profession"}
-            {photoIdx === 2 && "Skills & Tools"}
-            {photoIdx >= 3 && "Experience & Interests"}
+            {photoIdx === 2 && "Skills"}
+            {photoIdx >= 3 && "More details"}
           </span>
         </div>
       </div>
-      {isActive && (
-        <div className="absolute left-1/2 -translate-x-1/2 z-30" style={{ bottom: -90 }}>
-          {/* Direction Labels */}
-          <div className="flex items-center justify-between px-2 mb-3">
-            <div className="text-center">
-              <div className="text-red-400 text-sm font-semibold mb-1">← PASS</div>
-              <div className="text-red-400/60 text-xs">Swipe left</div>
-            </div>
-            <div className="text-center">
-              <div className="text-emerald-400 text-sm font-semibold mb-1">LIKE →</div>
-              <div className="text-emerald-400/60 text-xs">Swipe right</div>
-            </div>
-          </div>
-          
-          {/* Action Buttons */}
-          <div className="flex items-center justify-center gap-8 h-14 px-6 rounded-full backdrop-blur-md bg-white/10 shadow-lg border border-white/10" style={{ minWidth: 200 }}>
-            <button
-              aria-label="Reject"
-              onClick={() => onSwipe('left')}
-              className="w-14 h-14 rounded-full flex items-center justify-center text-3xl hover:scale-110 transition bg-transparent transform-gpu"
-            >
-              <XMarkIcon className="w-8 h-8 text-red-400" />
-            </button>
-            <button
-              aria-label="Like"
-              onClick={() => onSwipe('right')}
-              className="w-14 h-14 rounded-full flex items-center justify-center text-3xl hover:scale-110 transition bg-transparent transform-gpu"
-            >
-              <HeartIcon className="w-8 h-8 text-emerald-400" />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
-export default ProfileCard; 
+// Memoize to prevent unnecessary re-renders
+export default React.memo(ProfileCard); 
