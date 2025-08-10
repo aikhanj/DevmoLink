@@ -63,6 +63,8 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="" />
+        <link rel="preconnect" href="https://storage.googleapis.com" crossOrigin="" />
       </head>
       <body suppressHydrationWarning className={inter.className + " bg-gradient-to-br from-[#23272a] via-[#5865f2] to-[#a259f7] min-h-screen"}>
         <ClientProviders>
