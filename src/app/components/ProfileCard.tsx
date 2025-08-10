@@ -102,10 +102,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
     // Photo switching for quick taps with minimal movement (works for all cards)
     if (timeDiff < HOLD_MS && deltaX < 10 && deltaY < 10) {
       // Prevent event bubbling for photo navigation clicks
-      if (e) {
-        e.stopPropagation();
-        e.preventDefault();
-      }
+     
+
       
       const rect = document.querySelector('.profile-card')?.getBoundingClientRect();
       if (rect) {
