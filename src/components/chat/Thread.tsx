@@ -26,7 +26,7 @@ function MessageBubble({ message, isMe, currentUserEmail, recipientEmail, chatSa
     if (decrypted !== message.text && decrypted.length > 0 && !decrypted.includes('U2FsdGVk')) {
       displayText = decrypted;
     }
-  } catch (error) {
+  } catch {
     // Keep original text if decryption fails
   }
 

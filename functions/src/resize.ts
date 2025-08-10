@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions';
+import { onObjectFinalized } from 'firebase-functions/v2/storage';
 import * as admin from 'firebase-admin';
 import sharp from 'sharp';
 
@@ -6,9 +6,11 @@ admin.initializeApp();
 
 const SIZES = [256, 512, 768, 1080];
 
-export const onProfileImageUpload = functions.storage.object().onFinalize(async (object) => {
+export const onProfileImageUpload = onObjectFinalized(async (event) => {
+  const object = event.data;
   const bucket = admin.storage().bucket(object.bucket);
   const filePath = object.name || '';
+  
   if (!filePath.startsWith('profile_images/')) return;
   if (filePath.includes('/variants/')) return;
 

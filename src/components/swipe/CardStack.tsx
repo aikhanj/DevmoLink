@@ -9,7 +9,7 @@ interface Profile {
   id: string;
   name: string;
   photo?: PhotoMeta;
-  [key: string]: any;
+  [key: string]: unknown; // Replace 'any' with 'unknown'
 }
 
 interface SwipeCardImageProps {

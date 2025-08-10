@@ -1,5 +1,5 @@
 import imageCompression from 'browser-image-compression';
-import { getStorage, ref, uploadBytesResumable } from 'firebase/storage';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export async function compressAndUpload(file: File, path: string) {
   const compressed = await imageCompression(file, {
@@ -18,5 +18,5 @@ export async function compressAndUpload(file: File, path: string) {
   };
 
   const snap = await uploadBytesResumable(storageRef, compressed, metadata);
-  return await snap.ref.getDownloadURL?.(); // compat; not required if you read ref.fullPath later
+  return await getDownloadURL(snap.ref);
 }

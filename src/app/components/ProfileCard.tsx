@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useLayoutEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useMemo } from 'react';
 import { XMarkIcon, HeartIcon } from '@heroicons/react/24/solid';
 import CardPhoto from '@/components/media/CardPhoto';
 import { pickVariant } from '@/lib/images';
@@ -80,7 +80,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe, i
       
       holdTimer.current = setTimeout(() => {
         // After hold time, let TinderCard take over by re-dispatching the event
-        const rect = (e.target as HTMLElement).getBoundingClientRect();
         const newEvent = new MouseEvent('mousedown', {
           bubbles: true,
           clientX,
@@ -91,11 +90,12 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe, i
     }
   };
 
-  const handleMove = (clientX: number, clientY: number) => {
+  const handleMove = (clientX: number, _clientY: number) => {
     if (!isActive || isPressed) return; // Skip hint updates for swipeable cards to avoid jitter
     
-    const rect = (document.querySelector('.profile-card') as HTMLElement)?.getBoundingClientRect();
-    if (rect) {
+    const element = document.querySelector('.profile-card') as HTMLElement;
+    if (element) {
+      const rect = element.getBoundingClientRect();
       const deltaX = clientX - rect.left - rect.width / 2;
       const threshold = 50;
       const newHint = deltaX > threshold ? 'right' : deltaX < -threshold ? 'left' : null;
@@ -107,7 +107,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe, i
     }
   };
 
-  const handleEnd = (clientX: number, clientY: number, e: React.TouchEvent | React.MouseEvent) => {
+  const handleEnd = (clientX: number, _clientY: number, e: React.TouchEvent | React.MouseEvent) => {
     if (!isActive) return;
     
     resetState();
@@ -153,8 +153,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe, i
     };
     return info;
   };
-
-  const visibleInfo = getVisibleInfo();
 
   // Render optimized image if using variants, otherwise fall back to regular img
   const renderImage = () => {
@@ -233,7 +231,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe, i
           {/* Loading overlay (full card) */}
           {(imageLoading && !imageError) && (
             <div className="absolute inset-0 bg-gray-900 flex items-center justify-center z-40">
-              <div className="w-8 h-8 border-4 border-blue-400/30 border-t-blue-400 rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-4 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
             </div>
           )}
           {imageError && (

@@ -1,8 +1,13 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 export function usePrefetchNext(urls: (string|undefined)[]) {
+  const validUrls = useMemo(() => urls.filter(Boolean) as string[], [urls]);
+  
   useEffect(() => {
-    urls.filter(Boolean).forEach((u) => { const img = new Image(); img.src = u!; });
-  }, [urls.join('|')]);
+    validUrls.forEach((url) => { 
+      const img = new Image(); 
+      img.src = url; 
+    });
+  }, [validUrls]);
 }
