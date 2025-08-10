@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useLayoutEffect } from 'react';
 import { XMarkIcon, HeartIcon } from '@heroicons/react/24/solid';
 
 // How long the user must hold before the swipe interaction is forwarded (ms)
@@ -31,13 +31,16 @@ interface ProfileCardProps {
 
 const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe }) => {
   const { name, age, programmingLanguages = [], photos: rawPhotos = [], description } = profile;
-  
-  const photos = Array.from(new Set(rawPhotos.filter(Boolean)));
+
+  const photos = useMemo(() => Array.from(new Set(rawPhotos.filter(Boolean))), [rawPhotos]);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [isPressed, setIsPressed] = useState(false);
   const [pressStart, setPressStart] = useState({ x: 0, y: 0, time: 0 });
   const [swipeHint, setSwipeHint] = useState<'left' | 'right' | null>(null);
   const holdTimer = useRef<NodeJS.Timeout | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   const resetState = () => {
     setIsPressed(false);
@@ -90,7 +93,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
     }
   };
 
-  const handleEnd = (clientX: number, clientY: number, e?: React.MouseEvent | React.TouchEvent) => {
+  const handleEnd = (clientX: number, clientY: number, _e?: React.MouseEvent | React.TouchEvent) => {
     if (!isPressed) return;
     
     const timeDiff = Date.now() - pressStart.time;
@@ -120,6 +123,18 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
 
   // Cleanup on unmount
   useEffect(() => () => resetState(), []);
+
+  // When photo changes, determine loading state before paint to avoid flicker
+  useLayoutEffect(() => {
+    setImageError(false);
+    const imgEl = imgRef.current;
+    if (imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
+      // Image is already in cache and decoded; skip loading animation
+      setImageLoading(false);
+    } else {
+      setImageLoading(true);
+    }
+  }, [photoIdx, photos]);
 
   // Progressive information reveal based on photo index
   const getVisibleInfo = () => {
@@ -165,30 +180,53 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isActive, onSwipe })
     >
       {photos && photos.length > 0 ? (
         <>
+          {/* Loading overlay (full card) */}
+          {(imageLoading && !imageError) && (
+            <div className="absolute inset-0 z-10 shimmer" />
+          )}
+          {/* Error overlay */}
+          {imageError && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-900">
+              <div className="text-center text-gray-400">
+                <div className="mb-2">Failed to load photo</div>
+                <button
+                  className="px-3 py-1 text-xs rounded bg-white/10 hover:bg-white/20 border border-white/10"
+                  onClick={() => {
+                    setImageLoading(true);
+                    setImageError(false);
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
           <img
+            ref={imgRef}
             src={photos[photoIdx]}
             alt={`${name} photo ${photoIdx + 1}`}
-            className="w-full h-full object-cover bg-gray-900"
+            className={`w-full h-full object-cover bg-gray-900 ${imageLoading && !imageError ? 'opacity-0 transition-opacity duration-300' : 'opacity-100'}`}
             draggable={false}
-            onError={(e) => {
+            onError={() => {
               console.error(`Failed to load image for ${name}:`, {
                 url: photos[photoIdx],
                 photoIndex: photoIdx,
                 totalPhotos: photos.length,
                 allPhotos: photos
               });
-              // Try to show placeholder or next photo
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
+              setImageError(true);
+              setImageLoading(false);
             }}
             onLoad={() => {
+              setImageLoading(false);
+              // Optional: keep console log for debugging
               console.log(`Successfully loaded image for ${name}:`, {
                 url: photos[photoIdx],
                 photoIndex: photoIdx
               });
             }}
           />
-          <ul className="absolute top-3 inset-x-4 flex gap-1 z-10">
+          <ul className="absolute top-3 inset-x-4 flex gap-1 z-30">
             {photos.map((_, i) => (
               <li key={i} className={`flex-1 h-0.5 rounded-full ${i === photoIdx ? 'bg-white' : 'bg-white/30'}`} />
             ))}
