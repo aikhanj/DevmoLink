@@ -1,5 +1,6 @@
 "use client";
 import { MessageCircle } from "lucide-react";
+import NextImage from "next/image";
 import { useSession, signIn } from "next-auth/react";
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -165,7 +166,7 @@ export default function ChatsPage() {
       const preloadPromises = enrichedMatchedProfiles.map((chat: ChatProfile) => {
         return new Promise<void>((resolve) => {
           if (chat.avatarUrl) {
-            const img = new Image();
+            const img = new window.Image();
             img.onload = () => resolve();
             img.onerror = () => resolve(); 
             img.src = chat.avatarUrl;
@@ -190,7 +191,7 @@ export default function ChatsPage() {
   }, [status, session, router]);
 
   if (status === "loading") {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-black font-sans">Loading...</div>;
   }
   if (!session) {
     return null;
@@ -198,10 +199,10 @@ export default function ChatsPage() {
 
   if (!session) {
     return (
-      <div className="flex flex-col items-center justify-center w-full bg-[#030712] font-sans transition-colors duration-500">
+      <div className="flex flex-col items-center justify-center w-full bg-black font-sans transition-colors duration-500 min-h-screen">
         <button
           onClick={() => signIn("google")}
-          className="px-6 py-3 bg-[#00FFAB] text-[#030712] rounded-full font-semibold shadow hover:scale-105 transition-transform text-lg mb-28 focus:outline-none focus:ring-2 focus:ring-[#00FFAB]"
+          className="px-6 py-3 bg-[var(--accent)] text-black rounded-full font-semibold shadow hover:scale-105 transition-transform text-lg mb-28 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
         >
           Sign in with Google to continue
         </button>
@@ -210,8 +211,8 @@ export default function ChatsPage() {
   }
 
   return (
-    <div className="w-full flex flex-col px-4 pt-4">
-      <h2 className="text-2xl font-bold text-[#00FFAB] mb-6 tracking-tight font-mono">Chats</h2>
+    <div className="w-full flex flex-col px-4 pt-4 bg-black min-h-screen font-sans">
+      <h2 className="text-2xl font-bold text-[var(--accent)] mb-6 tracking-tight">Chats</h2>
       <div className="w-full max-w-md space-y-6 flex-1">
                  {/* Admin buttons - only show in development or to admin users */}
          {isAdminMode && (
@@ -256,10 +257,10 @@ export default function ChatsPage() {
         </>
         )}
                  {chats.length === 0 ? (
-           <div className="flex flex-col items-center justify-center py-16">
+            <div className="flex flex-col items-center justify-center py-16">
              <div className="text-5xl mb-4">🎉</div>
-             <div className="text-lg text-white mb-2 font-mono">You&apos;re all caught up!</div>
-             <div className="text-[#00FFAB] mb-4 font-mono">We&apos;ll ping you when new hackers join.</div>
+              <div className="text-lg text-white mb-2">You&apos;re all caught up!</div>
+              <div className="text-[var(--accent)] mb-4">We&apos;ll ping you when new hackers join.</div>
              {/* <button 
                onClick={() => {
                  // Clear any phantom localStorage data and refresh
@@ -285,16 +286,16 @@ export default function ChatsPage() {
             >
               <div className="w-12 h-12 rounded-full overflow-hidden bg-[#0f1115] flex items-center justify-center text-white font-bold text-lg">
                 {chat.avatarUrl ? (
-                  <img src={chat.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                  <NextImage src={chat.avatarUrl} alt="avatar" width={48} height={48} className="object-cover" unoptimized />
                 ) : (
                   <span>{(chat.name ?? "").slice(0, 1)}</span>
                 )}
               </div>
               <div className="flex-1 text-left">
-                <div className="font-semibold text-white text-[1.125rem] font-mono">{chat.name ?? "Chat"}</div>
-                <div className="text-[#00FFAB] text-sm truncate font-mono">{chat.latestMessage || "Say hi and start collaborating!"}</div>
+                <div className="font-semibold text-white text-[1.125rem]">{chat.name ?? "Chat"}</div>
+                <div className="text-[var(--accent)] text-sm truncate">{chat.latestMessage || "Say hi and start collaborating!"}</div>
               </div>
-              <MessageCircle className="text-[#00FFAB] transition-all duration-150 ease-out" />
+              <MessageCircle className="text-[var(--accent)] transition-all duration-150 ease-out" />
             </button>
           ))
         )}
