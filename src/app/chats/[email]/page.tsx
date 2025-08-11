@@ -14,31 +14,12 @@ import {
   DocumentData,
   doc,
   getDoc,
-  getDocs,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
-import { encryptMessage, decryptMessage } from "../../utils/encryption";
+import { getSecureIdForEmail, getEmailFromSecureId, encryptMessage, decryptMessage } from "../../utils/secureIdHelpers";
 
-// Client-side secure ID helpers
-async function getSecureIdForEmail(email: string): Promise<string> {
-  const response = await fetch('/api/secure-id', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'generate', email })
-  });
-  const data = await response.json();
-  return data.secureId;
-}
-
-async function getEmailFromSecureId(secureId: string): Promise<string | null> {
-  const response = await fetch('/api/secure-id', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'getEmail', secureId })
-  });
-  const data = await response.json();
-  return data.email;
-}
+// Disable static generation for this dynamic route that requires authentication
+export const dynamic = 'force-dynamic';
 
 interface Profile {
   id: string;
@@ -56,34 +37,17 @@ interface ChatMessage extends DocumentData {
   isEncrypted?: boolean;
 }
 
-// Helper function to find email from secure ID
 async function findEmailBySecureId(secureId: string): Promise<string | null> {
-  // First check cache
-  const cachedEmail = getEmailFromSecureId(secureId);
-  if (cachedEmail) {
-    console.log("Found email in cache:", cachedEmail);
-    return cachedEmail;
-  }
-  
-  console.log("Cache miss, searching through profiles for secure ID:", secureId);
-  
-  // If not in cache, search through profiles
-  const profilesRef = collection(db, "profiles");
-  const snapshot = await getDocs(profilesRef);
-  
-  console.log("Found", snapshot.docs.length, "profiles to search through");
-  
-  for (const docSnap of snapshot.docs) {
-    const email = docSnap.id; // Document ID is the email
-    const profileSecureId = await getSecureIdForEmail(email);
-    console.log("Checking profile:", email, "→ secure ID:", profileSecureId);
-    if (profileSecureId === secureId) {
-      console.log("MATCH FOUND! Email:", email, "for secure ID:", secureId);
+  try {
+    const email = await getEmailFromSecureId(secureId);
+    if (email && typeof email === 'string') {
+      console.log("Resolved secure ID to email via API:", email);
       return email;
     }
+  } catch (error) {
+    console.error("Failed to resolve secure ID via API:", error);
   }
-  
-  console.log("No matching email found for secure ID:", secureId);
+  console.log("Secure ID not resolvable to a matched email:", secureId);
   return null;
 }
 
@@ -102,40 +66,48 @@ export default function ChatThreadPage() {
   // Resolve secure ID to email
   useEffect(() => {
     async function resolveEmail() {
-      console.log("Resolving email for param:", decodedParam);
-      
-      // First try cache
-      const cachedEmail = await getEmailFromSecureId(decodedParam);
-      if (cachedEmail) {
-        console.log("Found cached email:", cachedEmail);
-        setActualEmail(cachedEmail);
+      try {
+        console.log("Resolving email for param:", decodedParam);
+        
+        // First try cache
+        const cachedEmail = await getEmailFromSecureId(decodedParam);
+        if (cachedEmail && typeof cachedEmail === 'string') {
+          console.log("Found cached email:", cachedEmail);
+          setActualEmail(cachedEmail);
+          return;
+        }
+        
+        // If it looks like an email, use it directly
+        if (decodedParam.includes('@')) {
+          console.log("Using param as email directly:", decodedParam);
+          setActualEmail(decodedParam);
+          return;
+        }
+        
+        // Otherwise, search for the email by secure ID
+        console.log("Searching for email by secure ID:", decodedParam);
+        
+        // Debug: Let's see what secure ID would be generated for current user
+        if (session?.user?.email) {
+          try {
+            const currentUserSecureId = await getSecureIdForEmail(session.user.email);
+            console.log("Current user secure ID would be:", currentUserSecureId, "for email:", session.user.email);
+          } catch (error) {
+            console.error("Error getting secure ID for current user:", error);
+          }
+        }
+        
+        const foundEmail = await findEmailBySecureId(decodedParam);
+        if (foundEmail && typeof foundEmail === 'string') {
+          console.log("Found email by secure ID:", foundEmail);
+          setActualEmail(foundEmail);
+        } else {
+          console.log("No matched email found for secure ID; staying unresolved");
+          return;
+        }
+      } catch (error) {
+        console.error("Error in resolveEmail:", error);
         return;
-      }
-      
-      // If it looks like an email, use it directly
-      if (decodedParam.includes('@')) {
-        console.log("Using param as email directly:", decodedParam);
-        setActualEmail(decodedParam);
-        return;
-      }
-      
-      // Otherwise, search for the email by secure ID
-      console.log("Searching for email by secure ID:", decodedParam);
-      
-      // Debug: Let's see what secure ID would be generated for current user
-      if (session?.user?.email) {
-        const currentUserSecureId = await getSecureIdForEmail(session.user.email);
-        console.log("Current user secure ID would be:", currentUserSecureId, "for email:", session.user.email);
-      }
-      
-      const foundEmail = await findEmailBySecureId(decodedParam);
-      if (foundEmail) {
-        console.log("Found email by secure ID:", foundEmail);
-        setActualEmail(foundEmail);
-      } else {
-        console.log("No email found, using param as fallback:", decodedParam);
-        // Fallback to treating it as email (backward compatibility)
-        setActualEmail(decodedParam);
       }
     }
     
@@ -175,7 +147,7 @@ export default function ChatThreadPage() {
       .finally(() => setLoading(false));
   }, [actualEmail, setLoading]);
 
-  // Subscribe to Firestore messages in real-time
+  // Fetch the chat salt first
   useEffect(() => {
     if (!session?.user?.email || !actualEmail) {
       console.log("Waiting for session or actualEmail:", { 
@@ -186,16 +158,9 @@ export default function ChatThreadPage() {
       return;
     }
     
-    console.log("Setting up chat subscription for:", { 
-      sessionEmail: session.user.email, 
-      actualEmail,
-      decodedParam 
-    });
-    
     const chatId = [session.user.email, actualEmail].sort().join("_");
-    console.log("Chat ID:", chatId);
+    console.log("Fetching salt for chatId:", chatId);
     
-    // Fetch the chat-level salt once
     (async () => {
       try {
         const matchDocRef = doc(db, "matches", chatId);
@@ -203,47 +168,90 @@ export default function ChatThreadPage() {
         if (snap.exists()) {
           const data = snap.data() as { salt?: string } | undefined;
           if (data?.salt) {
-            setChatSalt(data.salt);
+                  setChatSalt(data.salt);
           } else {
-            setChatSalt("devmolink_salt"); // Fallback to default salt
+                  setChatSalt("devmolink_salt"); // Fallback for old chats
           }
         } else {
           console.log("No match document found for chatId:", chatId);
-          setChatSalt("devmolink_salt"); // Fallback to default salt
+          setChatSalt("devmolink_salt");
         }
       } catch (err) {
         console.error("Failed to fetch chat salt", err);
-        setChatSalt("devmolink_salt"); // Fallback to default salt
+        setChatSalt("devmolink_salt");
       }
     })();
-
-    const msgsRef = collection(db, "matches", chatId, "messages");
-    const q = query(msgsRef, orderBy("timestamp", "asc"));
-    const unsub = onSnapshot(q, (snap) => {
-      const list: ChatMessage[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as ChatMessage) }));
-      setMessages(list);
-    });
-    return unsub;
   }, [session?.user?.email, actualEmail, decodedParam]);
 
-  async function handleSend() {
-    if (!newMessage.trim() || !session?.user?.email || !actualEmail) {
-      console.log("Cannot send message:", { 
-        hasMessage: !!newMessage.trim(), 
+  // Subscribe to Firestore messages after salt is loaded
+  useEffect(() => {
+    if (!session?.user?.email || !actualEmail || !chatSalt) {
+      console.log("Waiting for dependencies:", { 
         hasSession: !!session?.user?.email, 
-        actualEmail 
+        actualEmail,
+        hasSalt: !!chatSalt 
       });
       return;
     }
     
-    // Ensure we have a salt before encrypting
-    const currentSalt = chatSalt || "devmolink_salt";
+
+    
+    const chatId = [session.user.email, actualEmail].sort().join("_");
+    const msgsRef = collection(db, "matches", chatId, "messages");
+    const q = query(msgsRef, orderBy("timestamp", "asc"));
+    const unsub = onSnapshot(q, async (snap) => {
+      const encryptedList: ChatMessage[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as ChatMessage) }));
+      
+
+      
+      // Decrypt messages before setting state
+      const decryptedList = await Promise.all(encryptedList.map(async (msg) => {
+        let displayText = msg.text;
+        
+        // Determine the actual sender and recipient for this message
+        const messageSender = msg.from;
+        const messageRecipient = msg.from === session.user?.email ? actualEmail : session.user?.email;
+        
+        // Only try to decrypt if message is marked as encrypted OR looks encrypted
+        if (msg.isEncrypted && messageSender && messageRecipient) {
+
+          displayText = await decryptMessage(msg.text, messageSender, messageRecipient, chatSalt);
+        } else if (msg.text.length > 50 && /^[A-Za-z0-9+/]+=*$/.test(msg.text) && messageSender && messageRecipient) {
+          // Fallback: try to decrypt if it looks like encrypted text (base64-like)
+          const decrypted = await decryptMessage(msg.text, messageSender, messageRecipient, chatSalt);
+          // Only use decrypted version if it's different and looks like real text
+          if (decrypted !== msg.text && decrypted.length > 0 && !decrypted.includes('U2FsdGVk')) {
+            displayText = decrypted;
+          }
+        }
+        
+        return { ...msg, text: displayText };
+      }));
+      
+      setMessages(decryptedList);
+    });
+    return unsub;
+  }, [session?.user?.email, actualEmail, chatSalt]);
+
+  async function handleSend() {
+    if (!newMessage.trim() || !session?.user?.email || !actualEmail || !chatSalt) {
+      console.log("Cannot send message:", { 
+        hasMessage: !!newMessage.trim(), 
+        hasSession: !!session?.user?.email, 
+        actualEmail,
+        hasSalt: !!chatSalt
+      });
+      return;
+    }
+    
+
     
     // Encrypt the message before sending
-    const encryptedText = encryptMessage(newMessage.trim(), session.user.email, actualEmail, currentSalt);
+    const encryptedText = await encryptMessage(newMessage.trim(), session.user.email, actualEmail, chatSalt);
     
     const chatId = [session.user.email, actualEmail].sort().join("_");
     
+
     
     const msgsRef = collection(db, "matches", chatId, "messages");
     await addDoc(msgsRef, {
@@ -281,7 +289,7 @@ export default function ChatThreadPage() {
           {profile?.avatarUrl ? (
             <img
               src={profile.avatarUrl}
-              alt={profile?.name || actualEmail}
+              alt={profile?.name || (typeof actualEmail === 'string' ? actualEmail : 'Unknown')}
               className="w-10 h-10 rounded-full object-cover bg-gradient-to-r from-[#00FFAB] to-[#009E6F]"
             />
           ) : (
@@ -290,7 +298,7 @@ export default function ChatThreadPage() {
             </div>
           )}
           <span className="font-semibold text-white text-lg font-mono">
-            {profile?.name || actualEmail}
+            {profile?.name || (typeof actualEmail === 'string' ? actualEmail : 'Unknown')}
           </span>
         </div>
         {/* Encryption indicator */}
@@ -307,27 +315,8 @@ export default function ChatThreadPage() {
         {messages.map((msg) => {
           const isMe = msg.from === session.user?.email;
           
-          // Decrypt message for display
-          let displayText = msg.text;
-          
-          // Ensure we have a salt before attempting decryption
-          const currentSalt = chatSalt || "devmolink_salt";
-          
-          // Only try to decrypt if message is marked as encrypted OR looks encrypted
-          if (msg.isEncrypted && session.user?.email) {
-            displayText = decryptMessage(msg.text, session.user.email, actualEmail, currentSalt);
-            if (displayText === msg.text) {
-            }
-          } else if (msg.text.length > 50 && /^[A-Za-z0-9+/]+=*$/.test(msg.text) && session.user?.email) {
-            // Fallback: try to decrypt if it looks like encrypted text (base64-like)
-            const decrypted = decryptMessage(msg.text, session.user.email, actualEmail, currentSalt);
-            // Only use decrypted version if it's different and looks like real text
-            if (decrypted !== msg.text && decrypted.length > 0 && !decrypted.includes('U2FsdGVk')) {
-              displayText = decrypted;
-            } else {
-            }
-          }
-          // Otherwise, show original text (unencrypted legacy messages)
+          // Message is already decrypted in the onSnapshot handler
+          const displayText = msg.text;
           
           return (
             <div
@@ -353,8 +342,8 @@ export default function ChatThreadPage() {
         />
         <button
           onClick={handleSend}
-          disabled={!newMessage.trim()}
-          className={`px-4 py-2 rounded-full font-semibold text-sm transition-transform ${newMessage.trim() ? "bg-[#00FFAB] text-[#030712] hover:scale-105" : "bg-[#00FFAB]/40 text-[#030712]/40 cursor-not-allowed"}`}
+          disabled={!newMessage.trim() || !chatSalt}
+          className={`px-4 py-2 rounded-full font-semibold text-sm transition-transform ${newMessage.trim() && chatSalt ? "bg-[#00FFAB] text-[#030712] hover:scale-105" : "bg-[#00FFAB]/40 text-[#030712]/40 cursor-not-allowed"}`}
         >
           Send
         </button>

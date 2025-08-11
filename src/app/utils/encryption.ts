@@ -1,17 +1,19 @@
+import 'server-only';
 import CryptoJS from 'crypto-js';
 
-// Derive a deterministic key from the two participant emails **and** a per-chat salt that
-// is stored with the chat document in Firestore. Falling back to the original constant
-// keeps backward-compatibility for legacy chats that were created before salts existed.
-const generateChatKey = (email1: string, email2: string, salt: string): string => {
-  const sortedEmails = [email1, email2].sort();
-  const safeSalt = salt || "devmolink_salt";
-  const baseKey = `${sortedEmails[0]}_${sortedEmails[1]}_${safeSalt}`;
+const SERVER_SECRET = process.env.ENCRYPTION_SECRET;
 
-  return CryptoJS.SHA256(baseKey).toString();
+const generateChatKey = (email1: string, email2: string, salt: string): string => {
+  if (!SERVER_SECRET) throw new Error('ENCRYPTION_SECRET missing');
+  if (!salt) throw new Error('chat salt missing');
+  const sorted = [email1, email2].sort();
+  const base = `${sorted[0]}_${sorted[1]}_${salt}_${SERVER_SECRET}`;
+  return CryptoJS.PBKDF2(base, salt, { keySize: 256/32, iterations: 10000 }).toString();
 };
 
-// Encrypt a message
+export const generateSalt = (): string =>
+  CryptoJS.lib.WordArray.random(16).toString();
+
 export const encryptMessage = (
   message: string,
   senderEmail: string,
@@ -23,11 +25,10 @@ export const encryptMessage = (
     return CryptoJS.AES.encrypt(message, chatKey).toString();
   } catch (error) {
     console.error("Encryption failed:", error);
-    return message; // Fallback to plain text if encryption fails
+    return message;
   }
 };
 
-// Decrypt a message
 export const decryptMessage = (
   encryptedMessage: string,
   senderEmail: string,
@@ -40,7 +41,6 @@ export const decryptMessage = (
     const originalMessage = decrypted.toString(CryptoJS.enc.Utf8);
 
     if (!originalMessage) {
-      // Likely encrypted with an old scheme — return ciphertext so UI can fall back.
       return encryptedMessage;
     }
 
@@ -51,9 +51,7 @@ export const decryptMessage = (
   }
 };
 
-// Check if a message appears to be encrypted
 export const isEncrypted = (message: string): boolean => {
-  // Basic check: encrypted messages are base64-like and longer than typical messages
   const base64Regex = /^[A-Za-z0-9+/]+=*$/;
   return message.length > 20 && base64Regex.test(message);
 }; 

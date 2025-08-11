@@ -7,19 +7,10 @@ import { LoadingContext } from "../MainLayout";
 import { toast } from 'react-hot-toast';
 import { collection, query, orderBy, limit, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";
-import { decryptMessage } from "../utils/encryption";
-import { getEmailFromSecureId } from "../utils/secureId";
+import { getEmailFromSecureId, decryptMessage } from "../utils/secureIdHelpers";
 
-// Client-side secure ID helpers
-async function getSecureIdForEmail(email: string): Promise<string> {
-  const response = await fetch('/api/secure-id', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'generate', email })
-  });
-  const data = await response.json();
-  return data.secureId;
-}
+// Disable static generation for this route that requires authentication
+export const dynamic = 'force-dynamic';
 
 interface ChatProfile {
   id: string; // email
@@ -36,48 +27,27 @@ export default function ChatsPage() {
   const [_localLoading, setLocalLoading] = useState(true);
   const { setLoading } = useContext(LoadingContext);
   const router = useRouter();
-  // Testing mode flag – mirrors logic on the Home page
-  const _isTestingMode = process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === "true" ||
-    (process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === undefined && process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true");
-  
-  // 🔒 ADMIN MODE - Only show dangerous buttons to specific admin users
-  const isAdminMode = session?.user?.email === 'ajumashukurov@gmail.com' || // Your Gmail account
-    session?.user?.email === 'jaikh.saiful@gmail.com'; // Add other admin emails here
+    
+  const isAdminMode = session?.user?.email === 'ajumashukurov@gmail.com' || 
+    session?.user?.email === 'jaikh.saiful@gmail.com'; 
 
-  // Helper function to find email from secure ID
-  const findEmailBySecureId = async (secureId: string): Promise<string | null> => {
-    // First check cache - this now needs to be done server-side
-    // TODO: Implement server-side caching properly
-    
-    // If not in cache, search through profiles
-    const profilesRef = collection(db, "profiles");
-    const snapshot = await getDocs(profilesRef);
-    
-    for (const docSnap of snapshot.docs) {
-      const email = docSnap.id; // Document ID is the email
-      const profileSecureId = await getSecureIdForEmail(email);
-      if (profileSecureId === secureId) {
-        return email;
+  const resolveEmailFromId = async (id: string): Promise<string | null> => {
+    if (id.includes('@')) return id;
+    const viaSecure = await getEmailFromSecureId(id);
+    if (viaSecure) return viaSecure;
+    try {
+      const res = await fetch(`/api/profiles/${encodeURIComponent(id)}`);
+      if (res.ok) {
+        const data = await res.json();
+        return typeof data.email === 'string' ? data.email : null;
       }
-    }
-    
+    } catch {}
     return null;
   };
 
-  // Function to fetch latest message for a chat
-  const fetchLatestMessage = async (userEmail: string, otherUserSecureId: string): Promise<{message: string, timestamp: number} | null> => {
-    // Convert secure ID to actual email
-    let otherUserEmail = getEmailFromSecureId(otherUserSecureId);
-    
-    // If not in cache and looks like secure ID, search for it
-    if (!otherUserEmail && !otherUserSecureId.includes('@')) {
-      otherUserEmail = await findEmailBySecureId(otherUserSecureId);
-    }
-    
-    // Fallback to treating as email if conversion failed
-    if (!otherUserEmail) {
-      otherUserEmail = otherUserSecureId;
-    }
+  const fetchLatestMessage = async (userEmail: string, otherUserId: string): Promise<{message: string, timestamp: number} | null> => {
+    const otherUserEmail = await resolveEmailFromId(otherUserId);
+    if (!otherUserEmail) return null;
     try {
       const chatId = [userEmail, otherUserEmail].sort().join("_");
       const messagesRef = collection(db, "matches", chatId, "messages");
@@ -91,27 +61,31 @@ export default function ChatsPage() {
       const latestDoc = snapshot.docs[0];
       const messageData = latestDoc.data();
       
-      // Get chat salt for decryption
-      let chatSalt = "devmolink_salt";
+      let chatSalt = "";
       try {
         const matchDocRef = doc(db, "matches", chatId);
         const matchDoc = await getDoc(matchDocRef);
         if (matchDoc.exists()) {
           const matchData = matchDoc.data();
-          chatSalt = matchData.salt || "devmolink_salt";
+          chatSalt = matchData.salt || "devmolink_salt"; // Fallback for old chats
+        } else {
+          chatSalt = "devmolink_salt"; // Fallback for unmigrated chats
         }
       } catch (err) {
         console.error("Failed to fetch chat salt for latest message", err);
+        chatSalt = "devmolink_salt"; // Fallback on error
       }
 
       let displayText = messageData.text;
       
-      // Decrypt if encrypted
-      if (messageData.isEncrypted) {
-        displayText = decryptMessage(messageData.text, userEmail, otherUserEmail, chatSalt);
-      } else if (messageData.text.length > 50 && /^[A-Za-z0-9+/]+=*$/.test(messageData.text)) {
-        // Fallback: try to decrypt if it looks encrypted
-        const decrypted = decryptMessage(messageData.text, userEmail, otherUserEmail, chatSalt);
+      // Determine the actual sender and recipient for this message
+      const messageSender = messageData.from;
+      const messageRecipient = messageData.from === userEmail ? otherUserEmail : userEmail;
+      
+      if (messageData.isEncrypted && messageSender && messageRecipient) {
+        displayText = await decryptMessage(messageData.text, messageSender, messageRecipient, chatSalt);
+      } else if (messageData.text.length > 50 && /^[A-Za-z0-9+/]+=*$/.test(messageData.text) && messageSender && messageRecipient) {
+        const decrypted = await decryptMessage(messageData.text, messageSender, messageRecipient, chatSalt);
         if (decrypted !== messageData.text && decrypted.length > 0 && !decrypted.includes('U2FsdGVk')) {
           displayText = decrypted;
         }
@@ -132,12 +106,10 @@ export default function ChatsPage() {
     setLoading(true);
     setLocalLoading(true);
     
-    // 🧹 CLEAR ANY PHANTOM LOCALSTORAGE DATA
     if (typeof window !== "undefined") {
       localStorage.removeItem("likedEmails");
     }
          Promise.all([
-      // Get matches from database ONLY
       fetch("/api/matches").then((res) => {
         if (!res.ok) {
           console.error("Failed to fetch matches:", res.status, res.statusText);
@@ -145,7 +117,6 @@ export default function ChatsPage() {
         }
         return res.json();
       }).catch(() => []),
-      // Get profiles for matched users only
       fetch("/api/profiles/matches").then((res) => {
         if (!res.ok) {
           console.error("Failed to fetch matched profiles:", res.status, res.statusText);
@@ -154,22 +125,18 @@ export default function ChatsPage() {
         return res.json();
       }).catch(() => []),
     ]).then(async ([matchedProfiles, matchedUserProfiles]) => {
-      // Ensure both are arrays
       const profiles = Array.isArray(matchedProfiles) ? matchedProfiles : [];
       const userProfiles = Array.isArray(matchedUserProfiles) ? matchedUserProfiles : [];
       
-      // 🚨 FILTER OUT SELF AND ONLY SHOW REAL MATCHES! 🚨
       const currentUserEmail = session?.user?.email;
       const filteredMatchedProfiles = profiles.filter((profile: ChatProfile) => 
         profile.email !== currentUserEmail && profile.id !== currentUserEmail
       );
 
-      // Merge matched profiles with their full profile data (including avatars and latest messages)
       const enrichedMatchedProfiles = await Promise.all(
         filteredMatchedProfiles.map(async (match: ChatProfile) => {
           const profile = userProfiles.find((p: ChatProfile) => p.email === match.id || p.id === match.id);
           
-          // Fetch latest message for this chat
           let latestMessage = "Say hi and start collaborating!";
           let latestTimestamp = 0;
           
@@ -191,27 +158,23 @@ export default function ChatsPage() {
         })
       );
 
-      // Sort chats by latest message timestamp (most recent first)
       enrichedMatchedProfiles.sort((a, b) => (b.latestTimestamp || 0) - (a.latestTimestamp || 0));
 
-      // ONLY show actual matches from the database (no localStorage phantom data)
       setChats(enrichedMatchedProfiles);
       
-      // Preload all avatar images before showing the page
       const preloadPromises = enrichedMatchedProfiles.map((chat: ChatProfile) => {
         return new Promise<void>((resolve) => {
           if (chat.avatarUrl) {
             const img = new Image();
             img.onload = () => resolve();
-            img.onerror = () => resolve(); // Still resolve to not block the UI
+            img.onerror = () => resolve(); 
             img.src = chat.avatarUrl;
           } else {
-            resolve(); // No avatar to load
+            resolve(); 
           }
         });
       });
       
-      // Wait for all avatars to load
       await Promise.all(preloadPromises);
       
     }).finally(() => {
@@ -259,7 +222,6 @@ export default function ChatsPage() {
                if (typeof window !== "undefined") {
                  localStorage.removeItem("likedEmails");
                }
-               // Clear only current user's data
                fetch("/api/chats/reset", { method: "POST" }).catch(() => {});
                setChats([]);
              }}
@@ -315,21 +277,9 @@ export default function ChatsPage() {
           chats.map((chat) => (
             <button
               key={chat.id}
-              onClick={async () => {
-                // Convert secure ID to email for navigation
-                let emailForNavigation = getEmailFromSecureId(chat.id);
-                
-                // If not in cache and looks like secure ID, search for it
-                if (!emailForNavigation && !chat.id.includes('@')) {
-                  emailForNavigation = await findEmailBySecureId(chat.id);
-                }
-                
-                // Fallback to treating as email if conversion failed
-                if (!emailForNavigation) {
-                  emailForNavigation = chat.id;
-                }
-                
-                router.push(`/chats/${encodeURIComponent(emailForNavigation)}`);
+              onClick={() => {
+                // Keep URL using secure ID to avoid exposing emails
+                router.push(`/chats/${encodeURIComponent(chat.id)}`);
               }}
               className="w-full flex items-center gap-4 bg-[#18181b] rounded-xl shadow-lg shadow-black/20 p-4 transition-all duration-150 hover:scale-[1.02] hover:shadow-xl"
             >

@@ -4,11 +4,11 @@ import { NextAuthOptions } from "next-auth";
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "801631771776-fia1oregjq0dqa2t4djftbgasjt7bmar.apps.googleusercontent.com",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "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",
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
   ],
-  secret: process.env.NEXTAUTH_SECRET || "your-super-secret-nextauth-secret-key-here-change-this-in-production",
+  secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt" as const,
   },
