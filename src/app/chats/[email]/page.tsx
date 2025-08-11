@@ -56,6 +56,7 @@ export default function ChatThreadPage() {
   const { setLoading } = useContext(LoadingContext);
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState<boolean>(false);
   const [actualEmail, setActualEmail] = useState<string>("");
 
   // Get dynamic segment from router params
@@ -63,6 +64,12 @@ export default function ChatThreadPage() {
   const rawParam = paramEmail ?? "";
   const decodedParam = decodeURIComponent(rawParam);
   
+  // Show global loader immediately on mount; it will be turned off when ready
+  useEffect(() => {
+    setLoading(true);
+    return () => setLoading(false);
+  }, [setLoading]);
+
   // Resolve secure ID to email
   useEffect(() => {
     async function resolveEmail() {
@@ -117,7 +124,9 @@ export default function ChatThreadPage() {
   }, [decodedParam, session?.user?.email]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messagesLoaded, setMessagesLoaded] = useState<boolean>(false);
   const [chatSalt, setChatSalt] = useState<string>("");
+  const [saltLoaded, setSaltLoaded] = useState<boolean>(false);
   const [newMessage, setNewMessage] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -129,6 +138,7 @@ export default function ChatThreadPage() {
   // Fetch recipient profile
   useEffect(() => {
     if (!actualEmail) return;
+    setProfileLoaded(false);
     setLoading(true);
     fetch(`/api/profiles/${encodeURIComponent(actualEmail)}`)
       .then((res) => {
@@ -144,7 +154,7 @@ export default function ChatThreadPage() {
         console.error("Failed to fetch profile:", error);
         setProfile(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { setProfileLoaded(true); });
   }, [actualEmail, setLoading]);
 
   // Fetch the chat salt first
@@ -169,16 +179,20 @@ export default function ChatThreadPage() {
           const data = snap.data() as { salt?: string } | undefined;
           if (data?.salt) {
                   setChatSalt(data.salt);
+                  setSaltLoaded(true);
           } else {
                   setChatSalt("devmolink_salt"); // Fallback for old chats
+                  setSaltLoaded(true);
           }
         } else {
           console.log("No match document found for chatId:", chatId);
           setChatSalt("devmolink_salt");
+          setSaltLoaded(true);
         }
       } catch (err) {
         console.error("Failed to fetch chat salt", err);
         setChatSalt("devmolink_salt");
+        setSaltLoaded(true);
       }
     })();
   }, [session?.user?.email, actualEmail, decodedParam]);
@@ -199,6 +213,7 @@ export default function ChatThreadPage() {
     const chatId = [session.user.email, actualEmail].sort().join("_");
     const msgsRef = collection(db, "matches", chatId, "messages");
     const q = query(msgsRef, orderBy("timestamp", "asc"));
+    setMessagesLoaded(false);
     const unsub = onSnapshot(q, async (snap) => {
       const encryptedList: ChatMessage[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as ChatMessage) }));
       
@@ -229,6 +244,7 @@ export default function ChatThreadPage() {
       }));
       
       setMessages(decryptedList);
+      setMessagesLoaded(true);
     });
     return unsub;
   }, [session?.user?.email, actualEmail, chatSalt]);
@@ -271,11 +287,21 @@ export default function ChatThreadPage() {
     }
   }
 
+  const isReady = Boolean(actualEmail) && profileLoaded && saltLoaded && messagesLoaded;
+
+  // Turn off global loader only when everything is ready
+  useEffect(() => {
+    if (isReady) {
+      setLoading(false);
+    }
+  }, [isReady, setLoading]);
+
   if (status === "loading") return null;
   if (!session) {
     router.push("/");
     return null;
   }
+  if (!isReady) return null;
 
   return (
     <div className="min-h-screen w-full bg-[#030712] flex flex-col"> 
@@ -289,16 +315,16 @@ export default function ChatThreadPage() {
           {profile?.avatarUrl ? (
             <img
               src={profile.avatarUrl}
-              alt={profile?.name || (typeof actualEmail === 'string' ? actualEmail : 'Unknown')}
-              className="w-10 h-10 rounded-full object-cover bg-gradient-to-r from-[#00FFAB] to-[#009E6F]"
+              alt="avatar"
+              className="w-10 h-10 rounded-full object-cover bg-[#18181b]"
             />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
-              {profile?.name ? profile.name[0] : "?"}
+            <div className="w-10 h-10 rounded-full bg-[#18181b] flex items-center justify-center text-white font-bold text-lg">
+              {profile?.name ? profile.name[0] : ""}
             </div>
           )}
           <span className="font-semibold text-white text-lg font-mono">
-            {profile?.name || (typeof actualEmail === 'string' ? actualEmail : 'Unknown')}
+            {profile?.name || "Chat"}
           </span>
         </div>
         {/* Encryption indicator */}

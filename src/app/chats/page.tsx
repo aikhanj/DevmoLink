@@ -283,15 +283,15 @@ export default function ChatsPage() {
               }}
               className="w-full flex items-center gap-4 bg-[#18181b] rounded-xl shadow-lg shadow-black/20 p-4 transition-all duration-150 hover:scale-[1.02] hover:shadow-xl"
             >
-                             <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-[#00FFAB] to-[#009E6F] flex items-center justify-center text-white font-bold text-lg">
-                 {chat.avatarUrl ? (
-                   <img src={chat.avatarUrl} alt={chat.name || chat.email} className="w-full h-full object-cover" />
-                 ) : (
-                   <span>{(chat.name ?? chat.email ?? chat.id)[0]}</span>
-                 )}
-               </div>
+              <div className="w-12 h-12 rounded-full overflow-hidden bg-[#0f1115] flex items-center justify-center text-white font-bold text-lg">
+                {chat.avatarUrl ? (
+                  <img src={chat.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span>{(chat.name ?? "").slice(0, 1)}</span>
+                )}
+              </div>
               <div className="flex-1 text-left">
-                <div className="font-semibold text-white text-[1.125rem] font-mono">{chat.name ?? chat.email ?? chat.id}</div>
+                <div className="font-semibold text-white text-[1.125rem] font-mono">{chat.name ?? "Chat"}</div>
                 <div className="text-[#00FFAB] text-sm truncate font-mono">{chat.latestMessage || "Say hi and start collaborating!"}</div>
               </div>
               <MessageCircle className="text-[#00FFAB] transition-all duration-150 ease-out" />
